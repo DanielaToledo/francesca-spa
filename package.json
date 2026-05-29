@@ -1,0 +1,14 @@
+{
+  "name": "spa-francesca",
+  "version": "1.0.0",
+  "description": "Monorepo para el sistema de gestión de Francesca Spa",
+  "private": true,
+  "workspaces": [
+    "client",
+    "server"
+  ],
+  "scripts": {
+    "dev:backend": "npm run dev --workspace=server",
+    "dev:frontend": "npm run dev --workspace=client"
+  }
+}

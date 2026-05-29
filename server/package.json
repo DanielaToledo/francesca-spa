@@ -1,0 +1,19 @@
+{
+  "name": "api-backend",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Backend para Francesca Spa",
+  "main": "src/app.js",
+  "scripts": {
+    "start": "node src/app.js",
+    "dev": "node --watch src/app.js"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "express": "^4.21.0",
+    "jsonwebtoken": "^9.0.2",
+    "pg": "^8.13.0",
+    "socket.io": "^4.8.0",
+    "dotenv": "^16.4.5"
+  }
+}
