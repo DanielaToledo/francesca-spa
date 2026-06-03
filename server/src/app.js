@@ -3,6 +3,10 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import pool from './config/dbConfig.js'; // <-- ¡Acordate de poner siempre el .js al final!
 import clientRoute from './routes/clientRoute.js';
+import usuarioRoute from './routes/usuarioRoute.js';
+import rolRoute from './routes/rolRoute.js'; // <-- Importamos la ruta de roles
+import especialistaRoute from './routes/especialistaRoute.js' // <-- Importación (Singular)
+import servicioRoute from './routes/servicioRoute.js' // Singular
 
 
 // Configurar variables de entorno
@@ -26,4 +30,8 @@ app.get('/', (req, res) => {
 
 // 2. CONECTÁ las rutas a la URL '/api/clientes'
 app.use('/api/clientes', clientRoute);
+app.use('/api/usuarios', usuarioRoute);
+app.use('/api/roles', rolRoute); // <-- Agregamos la ruta de roles
+app.use('/api/especialistas', especialistaRoute) // <-- La colección (Plural)
+app.use('/api/servicios', servicioRoute) // Plural
 
