@@ -55,5 +55,20 @@ export const turnoController = {
         } catch (error) {
             return res.status(500).json({ success: false, message: 'Error al cambiar el estado del turno', error: error.message })
         }
+    },
+
+    reprogramarTurno: async (req, res) => {
+    const { id } = req.params // id_turno
+    const { fecha_hora } = req.body // Nueva fecha y hora
+    try {
+      if (!fecha_hora) return res.status(400).json({ success: false, message: 'Falta la nueva fecha y hora' })
+
+      const turnoReprogramado = await TurnoModel.reprogramar(id, fecha_hora)
+      if (!turnoReprogramado) return res.status(404).json({ success: false, message: 'Turno no encontrado' })
+
+      return res.status(200).json({ success: true, message: 'Turno reprogramado con éxito', data: turnoReprogramado })
+    } catch (error) {
+      return res.status(500).json({ success: false, message: 'Error al reprogramar el turno', error: error.message })
     }
+  }
 }
