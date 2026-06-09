@@ -10,8 +10,8 @@ import servicioRoute from './routes/servicioRoute.js' // Singular
 import authRoute from './routes/authRoute.js' // Importar (Singular)
 import turnoRoute from './routes/turnoRoute.js' // Singular
 import evolucionRoute from './routes/evolucionRoute.js' // Singular
-
-
+import pagoRoute from './routes/pagoRoute.js' // Singular
+import facturaRoute from './routes/facturaRoute.js' // Singular
 
 
 // Configurar variables de entorno
@@ -42,3 +42,5 @@ app.use('/api/servicios', servicioRoute) // Plural
 app.use('/api/auth', authRoute) // Ruta para autenticación (Registro y Login)
 app.use('/api/turnos', turnoRoute) // Plural
 app.use('/api/evoluciones', evolucionRoute) // Plural
+app.use('/api/pagos', pagoRoute) // Plural
+app.use('/api/facturas', facturaRoute) // Plural
