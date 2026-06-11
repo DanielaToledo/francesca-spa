@@ -26,8 +26,11 @@ app.listen(PORT, () => {
     console.log(`=================================================`);
 });
 
-app.use(cors());
 app.use(express.json());
+app.use(cors({
+  origin: 'http://localhost:5173', // Le damos permiso exclusivo a tu frontend de React
+  credentials: true
+}));
 
 app.get('/', (req, res) => {
     res.json({ message: "¡Hola Daniela! Backend moderno con IMPORT y EXPORT funcionando 🚀" });

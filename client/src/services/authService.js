@@ -4,7 +4,8 @@ export const authService = {
   // Iniciar sesión
   login: async (email, password) => {
     try {
-      const response = await API.post('/autenticacion/login', { email, password })
+      // CAMBIADO: Antes decía '/autenticacion/login' -> Ahora coincide con tu app.js
+      const response = await API.post('/auth/login', { email, password })
       return response.data
     } catch (error) {
       throw error.response?.data || { message: 'Error de conexión con el servidor' }
@@ -14,7 +15,8 @@ export const authService = {
   // Registro de clientes nuevos
   register: async (datosUsuario) => {
     try {
-      const response = await API.post('/autenticacion/register', datosUsuario)
+      // CAMBIADO: Antes decía '/autenticacion/register'
+      const response = await API.post('/auth/register', datosUsuario)
       return response.data
     } catch (error) {
       throw error.response?.data || { message: 'Error al registrar el usuario' }

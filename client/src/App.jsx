@@ -1,10 +1,13 @@
+import { BrowserRouter as Router } from 'react-router-dom'
+import AppRoutes from './routes/AppRoutes'
+
 function App() {
   return (
-    <div className="p-8 bg-blue-50 min-h-screen flex items-center justify-center">
-      <h1 className="text-3xl font-bold text-blue-600">
-        ¡Spa Backend conectado con Tailwind! 🚀
-      </h1>
-    </div>
+    <Router>
+      <div className="min-h-screen bg-slate-50 antialiased text-slate-900">
+        <AppRoutes />
+      </div>
+    </Router>
   )
 }
 
