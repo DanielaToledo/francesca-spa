@@ -118,6 +118,33 @@ export const TurnoModel = {
     `
         const { rows } = await pool.query(query, [id_turno, nueva_fecha_hora])
         return rows[0]
+    },
+
+    // Ajustado para filtrar por especialista Y por una fecha específica (YYYY-MM-DD)
+    // Ajustado para filtrar por ID de ESPECIALISTA (el que te dio el Login)
+    getByEspecialista: async (id_especialista) => {
+        const query = `
+          SELECT 
+            t.id_turno,
+            t.fecha_hora,
+            (u_cli.nombre || ' ' || u_cli.apellido) AS cliente_nombre,
+            t.id_cliente,
+            s.nombre_servicio, 
+            s.duracion_minutos, 
+            s.precio_base,
+            et.nombre_estado
+          FROM turno t
+          INNER JOIN cliente c ON t.id_cliente = c.id_cliente
+          INNER JOIN usuario u_cli ON c.id_usuario = u_cli.id_usuario
+          INNER JOIN especialista e ON t.id_especialista = e.id_especialista
+          INNER JOIN estado_turno et ON t.id_estado_turno = et.id_estado_turno
+          INNER JOIN servicio s ON t.id_servicio = s.id_servicio
+          WHERE t.id_especialista = $1
+          ORDER BY t.fecha_hora ASC;
+        `
+        // Enviamos solo el ID. Quitamos el filtro de fecha del SQL para que el frontend (que ya lo hace) sea el que filtre.
+        const { rows } = await pool.query(query, [id_especialista])
+        return rows
     }
 
 }

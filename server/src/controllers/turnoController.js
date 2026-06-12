@@ -20,6 +20,23 @@ export const turnoController = {
         }
     },
 
+ getTurnosEspecialista: async (req, res) => {
+    const { id_usuario } = req.params;
+    let { fecha } = req.query;
+
+    // Validación de seguridad en el backend
+    if (!fecha || fecha === 'undefined') {
+      fecha = new Date().toISOString().split('T')[0]; // Fallback a hoy
+    }
+
+    try {
+      const turnos = await TurnoModel.getByEspecialista(id_usuario, fecha);
+      return res.status(200).json({ success: true, data: turnos });
+    } catch (error) {
+      return res.status(500).json({ success: false, message: 'Error de base de datos', error: error.message });
+    }
+  },
+  
     getTurnoById: async (req, res) => {
         const { id } = req.params // Este es el id_turno que viaja en la URL
         try {

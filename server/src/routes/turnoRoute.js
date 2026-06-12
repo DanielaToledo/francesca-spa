@@ -9,5 +9,6 @@ router.post('/', turnoController.createTurno) // Agendar nuevo turno
 router.patch('/:id/estado', turnoController.cambiarEstado) // Cambiar estado a Realizado/Cancelado
 router.get('/:id', turnoController.getTurnoById) // <-- Nueva línea para buscar por ID
 router.put('/:id/reprogramar', turnoController.reprogramarTurno)
+router.get('/especialista/:id_usuario', turnoController.getTurnosEspecialista)
 
 export default router

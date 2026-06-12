@@ -58,14 +58,21 @@ export const clientController = {
   },
 
   // Buscar clientes por nombre
+  // Buscar clientes por nombre
   searchClients: async (req, res) => {
-    const { nombre } = req.query // Captura lo que va después del signo ?nombre=...
+    const { q } = req.query; // Cambiamos 'nombre' por 'q'
     try {
-      if (!nombre) return res.status(400).json({ success: false, message: 'Falta el término de búsqueda' })
-      const clients = await ClientModel.searchByName(nombre)
-      return res.status(200).json({ success: true, data: clients })
+      // Si no viene q, buscamos todos o devolvemos error. 
+      // Por ahora, si está vacío, podemos devolver una lista vacía o todos.
+      if (!q) {
+        const clients = await ClientModel.getAll();
+        return res.status(200).json({ success: true, data: clients });
+      }
+      
+      const clients = await ClientModel.searchByName(q);
+      return res.status(200).json({ success: true, data: clients });
     } catch (error) {
-      return res.status(500).json({ success: false, message: 'Error en la búsqueda', error: error.message })
+      return res.status(500).json({ success: false, message: 'Error en la búsqueda', error: error.message });
     }
   }
 

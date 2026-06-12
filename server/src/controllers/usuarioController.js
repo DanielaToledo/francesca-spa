@@ -21,12 +21,26 @@ export const usuarioController = {
     }
   },
 
+  // En tu controllers/usuarioController.js
   createUsuario: async (req, res) => {
+    // Recibimos rol y especialidad del formulario
+    const { nombre, apellido, email, password, rol, especialidad } = req.body;
+
     try {
-      const nuevoUsuario = await UsuarioModel.create(req.body)
-      return res.status(201).json({ success: true, message: 'Usuario creado con éxito', data: nuevoUsuario })
+      // 1. Creamos el usuario
+      const nuevoUsuario = await UsuarioModel.create({ nombre, apellido, email, password });
+
+      // 2. Si es especialista, lo anidamos de una vez
+      if (rol === 'Especialista') {
+        await EspecialistaModel.create({
+          id_usuario: nuevoUsuario.id_usuario,
+          especialidad: especialidad
+        });
+      }
+
+      return res.status(201).json({ success: true, data: nuevoUsuario });
     } catch (error) {
-      return res.status(500).json({ success: false, message: 'Error al crear usuario', error: error.message })
+      return res.status(500).json({ success: false, message: 'Error', error: error.message });
     }
   },
 
@@ -68,7 +82,7 @@ export const usuarioController = {
     const { id_rol } = req.query // Captura el ?id_rol=...
     try {
       if (!id_rol) return res.status(400).json({ success: false, message: 'Falta el ID del rol' })
-      
+
       const usuarios = await UsuarioModel.getByRol(id_rol)
       return res.status(200).json({ success: true, data: usuarios })
     } catch (error) {
