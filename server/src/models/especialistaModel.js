@@ -36,5 +36,50 @@ export const EspecialistaModel = {
     `
     const { rows } = await pool.query(query, [id_usuario, especialidad])
     return rows[0]
+  },
+
+  // Nuevo método en EspecialistaModel
+  createWithServices: async (especialistaData, serviciosIds) => {
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+
+      // 1. Crear el especialista
+      const queryEspecialista = `
+        INSERT INTO especialista (id_usuario, especialidad)
+        VALUES ($1, $2) RETURNING id_especialista;
+      `;
+      const res = await client.query(queryEspecialista, [especialistaData.id_usuario, especialistaData.especialidad]);
+      const id_especialista = res.rows[0].id_especialista;
+
+      // 2. Insertar servicios (Bucle)
+      const queryServicio = `
+        INSERT INTO especialista_servicio (id_especialista, id_servicio)
+        VALUES ($1, $2);
+      `;
+      for (const id_servicio of serviciosIds) {
+        await client.query(queryServicio, [id_especialista, id_servicio]);
+      }
+
+      await client.query('COMMIT');
+      return { id_especialista };
+    } catch (error) {
+      await client.query('ROLLBACK');
+      throw error;
+    } finally {
+      client.release();
+    }
+  },
+
+  // Nueva función para actualizar la configuración
+  updateConfiguracion: async (id_especialista, configuracion) => {
+    const query = `
+      UPDATE especialista 
+      SET configuracion_agenda = $1 
+      WHERE id_especialista = $2
+      RETURNING configuracion_agenda;
+    `;
+    const { rows } = await pool.query(query, [JSON.stringify(configuracion), id_especialista]);
+    return rows[0];
   }
 }

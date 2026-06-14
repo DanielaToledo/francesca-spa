@@ -6,11 +6,12 @@ import AgendaGeneral from '../pages/recepcion/AgendaGeneral'
 import PanelControl from '../pages/admin/PanelControl'
 import GestionUsuarios from '../pages/admin/GestionUsuarios'
 import AgendaMedico from '../pages/especialista/AgendaMedico' 
-// 🚀 IMPORTAMOS LA NUEVA PÁGINA
 import FichaClinica from '../pages/especialista/FichaClinica' 
 import AdminLayout from '../layouts/AdminLayout'
 import ProtectedRoute from '../components/common/ProtectedRoute'
-import BuscarPaciente from '../pages/especialista/BuscarPaciente';
+import BuscarPaciente from '../pages/especialista/BuscarPaciente'
+import Disponibilidad from '../pages/especialista/Disponibilidad';
+import Perfil from '../pages/especialista/Perfil';
 
 export default function AppRoutes() {
   return (
@@ -28,9 +29,11 @@ export default function AppRoutes() {
           {/* Agenda del Especialista */}
           <Route path="/especialista/agenda" element={<AgendaMedico />} />
           <Route path="/especialista/buscar-paciente" element={<BuscarPaciente />} />
+          <Route path="/especialista/disponibilidad" element={<Disponibilidad />} />
           
           {/* 📂 NUEVA RUTA: Ficha Clínica por ID de Cliente */}
           <Route path="/especialista/ficha/:id_cliente" element={<FichaClinica />} />
+          <Route path="/especialista/perfil" element={<Perfil />} />
         </Route>
       </Route>
 

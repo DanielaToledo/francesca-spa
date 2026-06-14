@@ -1,1 +1,44 @@
 @import "tailwindcss";
+
+/* Esto fuerza a que el calendario se expanda al máximo de su contenedor */
+.react-calendar {
+    width: 100% !important;
+    max-width: 100% !important;
+    background: white;
+    border: none !important;
+    font-family: Arial, Helvetica, sans-serif;
+}
+
+/* Agrandamos los números de los días */
+.react-calendar__tile {
+    padding: 20px 10px !important; /* Aumenta el padding para que sea más alto */
+    font-size: 1.2rem !important;  /* Números más grandes */
+}
+
+/* Ajuste para que el encabezado (mes/año) se vea proporcionado */
+.react-calendar__navigation button {
+    min-width: 44px;
+    font-size: 1.2rem !important;
+}
+
+
+/* Animación para el pop-in de los elementos*/
+
+@keyframes pop-in {
+  0% {
+    transform: scale(0);
+    opacity: 0;
+  }
+  70% {
+    transform: scale(1.1);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+.animate-pop-in {
+  animation: pop-in 0.4s ease-out forwards;
+}

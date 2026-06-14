@@ -10,5 +10,6 @@ router.patch('/:id/estado', turnoController.cambiarEstado) // Cambiar estado a R
 router.get('/:id', turnoController.getTurnoById) // <-- Nueva línea para buscar por ID
 router.put('/:id/reprogramar', turnoController.reprogramarTurno)
 router.get('/especialista/:id_usuario', turnoController.getTurnosEspecialista)
+router.get('/agenda/resumen/:id_especialista', turnoController.getResumenAgenda);
 
 export default router

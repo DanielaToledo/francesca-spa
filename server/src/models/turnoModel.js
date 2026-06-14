@@ -96,6 +96,7 @@ export const TurnoModel = {
         const { rows } = await pool.query(query, [id_cliente, id_especialista, id_servicio, fecha_hora])
         return rows[0]
     },
+    
 
     // 5. Cambiar el estado del turno
     updateEstado: async (id_turno, id_estado_turno) => {
@@ -145,6 +146,21 @@ export const TurnoModel = {
         // Enviamos solo el ID. Quitamos el filtro de fecha del SQL para que el frontend (que ya lo hace) sea el que filtre.
         const { rows } = await pool.query(query, [id_especialista])
         return rows
-    }
+    }, 
+
+    // Agrega este método en tu archivo de modelo de turnos
+verificarTurnosEnRango: async (id_especialista, fecha_inicio, fecha_fin) => {
+    // Buscamos si existe al menos un turno en ese periodo
+    const query = `
+        SELECT EXISTS (
+            SELECT 1 FROM turno 
+            WHERE id_especialista = $1 
+            AND fecha_hora >= $2 
+            AND fecha_hora < $3
+        ) as existe;
+    `;
+    const { rows } = await pool.query(query, [id_especialista, fecha_inicio, fecha_fin]);
+    return rows[0].existe;
+}
 
 }

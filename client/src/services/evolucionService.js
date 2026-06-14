@@ -30,5 +30,10 @@ export const evolucionService = {
             console.error("Error al obtener nombre:", error)
             throw error // Lanzamos el error para que FichaClinica lo capture
         }
-    }
+    },
+   // En evolucionService.js
+update: async (id, data) => {
+    // Asegúrate de enviar solo la descripción si el backend solo recibe eso
+    return await api.put(`/evoluciones/${id}`, { descripcion_evolucion: data.descripcion_evolucion });
+}
 }

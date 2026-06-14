@@ -3,60 +3,77 @@ import bcrypt from 'bcrypt'
 import jwt from 'jsonwebtoken'
 import dotenv from 'dotenv'
 
-
-// Clave secreta para firmar los tokens (En producción va en un archivo .env)
 const JWT_SECRET = process.env.JWT_SECRET
 
 export const authController = {
-    // 1. REGISTRO DE NUEVOS USUARIOS (Por defecto Clientes)
     register: async (req, res) => {
-        const { nombre, apellido, dni, email, password, id_rol } = req.body
+        // Recibimos 'especialidad' desde el frontend
+        const { nombre, apellido, dni, email, password, id_rol, serviciosIds, especialidad } = req.body;
 
         try {
-            // Validar si el email ya existe
-            const existeUser = await pool.query('SELECT * FROM usuario WHERE email = $1', [email])
+            const existeUser = await pool.query('SELECT * FROM usuario WHERE email = $1', [email]);
             if (existeUser.rows.length > 0) {
-                return res.status(400).json({ success: false, message: 'El email ya está registrado' })
+                return res.status(400).json({ success: false, message: 'El email ya está registrado' });
             }
 
-            // Encriptar la contraseña
-            const salt = await bcrypt.genSalt(10)
-            const password_hash = await bcrypt.hash(password, salt)
+            const salt = await bcrypt.genSalt(10);
+            const password_hash = await bcrypt.hash(password, salt);
 
-            // Si no viene id_rol en el body, por defecto le asignamos el de Cliente (ej: ID 4)
-            // Ajustá este número según el ID que tenga el rol "Cliente" en tu tabla rol
-            const rolAsignado = id_rol || 4
+            await pool.query('BEGIN');
 
-            const query = `
-        INSERT INTO usuario (nombre, apellido, dni, email, password_hash, id_rol)
-        VALUES ($1, $2, $3, $4, $5, $6)
-        RETURNING id_usuario, nombre, apellido, email, id_rol;
-      `
-            const { rows } = await pool.query(query, [nombre, apellido, dni, email, password_hash, rolAsignado])
+            // 1. Insertar Usuario
+            const userQuery = `
+                INSERT INTO usuario (nombre, apellido, dni, email, password_hash, id_rol)
+                VALUES ($1, $2, $3, $4, $5, $6) RETURNING id_usuario, nombre, apellido, id_rol;
+            `;
+            const userRes = await pool.query(userQuery, [nombre, apellido, dni, email, password_hash, id_rol]);
+            const nuevoUsuario = userRes.rows[0];
 
-            return res.status(201).json({
-                success: true,
+            // 2. Si el rol es Especialista (ID 3)
+            if (id_rol === 3) {
+                // Insertamos la especialidad aquí
+                const espQuery = `INSERT INTO especialista (id_usuario, especialidad) VALUES ($1, $2) RETURNING id_especialista;`;
+                const espRes = await pool.query(espQuery, [nuevoUsuario.id_usuario, especialidad || 'General']);
+                const id_especialista = espRes.rows[0].id_especialista;
+
+                // 3. Insertar relación de servicios
+                if (serviciosIds && serviciosIds.length > 0) {
+                    for (let id_servicio of serviciosIds) {
+                        await pool.query('INSERT INTO especialista_servicio (id_especialista, id_servicio) VALUES ($1, $2)', [id_especialista, id_servicio]);
+                    }
+                }
+            }
+
+            await pool.query('COMMIT');
+
+            return res.status(201).json({ 
+                success: true, 
                 message: 'Usuario registrado con éxito',
-                data: rows[0]
-            })
+                data: {
+                    id_usuario: nuevoUsuario.id_usuario,
+                    nombre: nuevoUsuario.nombre,
+                    apellido: nuevoUsuario.apellido,
+                    nombre_rol: id_rol === 3 ? 'Especialista' : (id_rol === 2 ? 'Recepcionista' : 'Administrador')
+                }
+            });
 
         } catch (error) {
-            return res.status(500).json({ success: false, message: 'Error en el registro', error: error.message })
+            await pool.query('ROLLBACK');
+            console.error("ERROR DETECTADO EN BACKEND:", error);
+            return res.status(500).json({ success: false, message: 'Error en el registro', error: error.message });
         }
     },
 
-    // 2. LOGIN DE USUARIOS OPTIMIZADO (Opción A)
     login: async (req, res) => {
         const { email, password } = req.body
 
         try {
-            // 1. Buscar el usuario base y su rol
             const queryUser = `
-        SELECT u.id_usuario, u.nombre, u.apellido, u.email, u.password_hash, u.activo, u.id_rol, r.nombre_rol
-        FROM usuario u
-        INNER JOIN rol r ON u.id_rol = r.id_rol
-        WHERE u.email = $1;
-      `
+                SELECT u.id_usuario, u.nombre, u.apellido, u.email, u.password_hash, u.activo, u.id_rol, r.nombre_rol
+                FROM usuario u
+                INNER JOIN rol r ON u.id_rol = r.id_rol
+                WHERE u.email = $1;
+            `
             const { rows } = await pool.query(queryUser, [email])
             const usuario = rows[0]
 
@@ -64,15 +81,13 @@ export const authController = {
                 return res.status(401).json({ success: false, message: 'Credenciales inválidas' })
             }
 
-            // 2. Verificar contraseña
             const match = await bcrypt.compare(password, usuario.password_hash)
             if (!match) {
                 return res.status(401).json({ success: false, message: 'Credenciales inválidas' })
             }
 
-            // 3. LA MAGIA: Buscar ID específico según el rol
             let id_especifico = null
-            let llave_id = 'id_usuario' // Por defecto para admin/recepcionista
+            let llave_id = 'id_usuario'
 
             if (usuario.nombre_rol === 'Cliente') {
                 const resCli = await pool.query('SELECT id_cliente FROM cliente WHERE id_usuario = $1', [usuario.id_usuario])
@@ -88,19 +103,16 @@ export const authController = {
                 }
             }
 
-            // 4. Armar el payload del Token con el ID operativo real
             const payload = {
                 id_usuario: usuario.id_usuario,
                 id_rol: usuario.id_rol,
                 rol: usuario.nombre_rol,
-                // Guardamos dinámicamente el ID que React va a necesitar para operar
                 id_operativo: id_especifico || usuario.id_usuario,
                 tipo_id: llave_id
             }
 
             const token = jwt.sign(payload, JWT_SECRET, { expiresIn: '24h' })
 
-            // 5. Devolver la respuesta limpia para React
             return res.status(200).json({
                 success: true,
                 message: 'Login exitoso',

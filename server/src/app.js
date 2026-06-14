@@ -12,6 +12,7 @@ import turnoRoute from './routes/turnoRoute.js' // Singular
 import evolucionRoute from './routes/evolucionRoute.js' // Singular
 import pagoRoute from './routes/pagoRoute.js' // Singular
 import facturaRoute from './routes/facturaRoute.js' // Singular
+import bloqueoAgendaRoutes from './routes/bloqueoAgendaRoute.js'; // Importar rutas de bloqueo de agenda
 
 
 // Configurar variables de entorno
@@ -47,3 +48,4 @@ app.use('/api/turnos', turnoRoute) // Plural
 app.use('/api/evoluciones', evolucionRoute) // Plural
 app.use('/api/pagos', pagoRoute) // Plural
 app.use('/api/facturas', facturaRoute) // Plural
+app.use('/api/bloqueos', bloqueoAgendaRoutes);

@@ -54,5 +54,19 @@ export const evolucionController = {
     } catch (error) {
       return res.status(500).json({ success: false, message: 'Error al obtener nombre', error: error.message })
     }
-  }
+  },
+
+// actualización de evolución (nueva función)
+updateEvolucion: async (req, res) => {
+    const { id_evolucion } = req.params;
+    try {
+        const { descripcion_evolucion } = req.body;
+        // Creamos la query de update en el modelo o la hacemos directo aquí
+        const updated = await EvolucionModel.update(id_evolucion, descripcion_evolucion);
+        return res.status(200).json({ success: true, data: updated });
+    } catch (error) {
+        return res.status(500).json({ success: false, message: error.message });
+    }
+},
+
 };

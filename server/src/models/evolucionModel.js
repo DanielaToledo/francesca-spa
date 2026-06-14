@@ -63,4 +63,14 @@ getNombreCliente: async (id_cliente) => {
       throw error; 
     }
   },
+  update: async (id_evolucion, descripcion) => {
+    const query = `
+      UPDATE evoluciones_medicas 
+      SET descripcion_evolucion = $1 
+      WHERE id_evolucion = $2
+      RETURNING *;
+    `;
+    const { rows } = await pool.query(query, [descripcion, id_evolucion]);
+    return rows[0];
+},
 }

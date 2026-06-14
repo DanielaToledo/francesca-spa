@@ -12,10 +12,14 @@
   "dependencies": {
     "@tailwindcss/postcss": "^4.3.0",
     "axios": "^1.17.0",
+    "date-fns": "^4.4.0",
     "lucide-react": "^1.17.0",
     "react": "^19.2.6",
+    "react-calendar": "^6.0.1",
+    "react-datepicker": "^9.1.0",
     "react-dom": "^19.2.6",
-    "react-router-dom": "^7.17.0"
+    "react-router-dom": "^7.17.0",
+    "sweetalert2": "^11.26.25"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
