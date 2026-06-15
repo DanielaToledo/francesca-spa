@@ -113,7 +113,7 @@ export default function PanelControl() {
         {/* 🌸 Formulario Dinámico en tu Rosa Pastel Delicado #F4CFCC */}
         <div className="bg-[#F4CFCC]/40 p-6 rounded-2xl shadow-sm border border-[#F4CFCC]/60 h-fit">
           <h3 className="text-lg font-bold text-[#A87379] mb-4">
-            {editandoId ? '📝 Editar Tratamiento' : '✨ Nuevo Tratamiento'}
+            {editandoId ? '📝 Editar Tratamiento' : ' Nuevo Tratamiento'}
           </h3>
 
           {formError && (

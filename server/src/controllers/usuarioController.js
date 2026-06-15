@@ -1,4 +1,13 @@
+//2. usuarioController.js (Tu administrador de la tabla usuario)
+// Este archivo debería ser el encargado de las operaciones de CRUD (Crear, Leer, Actualizar, Borrar) sobre la tabla usuario.
+
+// Su trabajo es listar usuarios, editar sus datos (nombre, apellido, email), o dar de baja a un usuario.
+
+// Cuando tu Admin entra a la pantalla de "Gestión de Personal" y le da al botón "Guardar", lo lógico es que esa petición vaya a usuarioController.js, no a authController.js.
 import { UsuarioModel } from '../models/usuarioModel.js' // <-- Cambiado a singular
+import { EspecialistaModel } from '../models/especialistaModel.js' // Importamos el modelo de especialista
+
+
 
 export const usuarioController = {
   getUsuarios: async (req, res) => {
@@ -44,27 +53,71 @@ export const usuarioController = {
     }
   },
 
-  updateUsuario: async (req, res) => {
-    const { id } = req.params
+updateUsuario: async (req, res) => {
+    const { id } = req.params; // Este es tu id_usuario
+    const { nombre, apellido, dni, email, id_rol, especialidad } = req.body;
+    
     try {
-      const actualizado = await UsuarioModel.update(id, req.body)
-      if (!actualizado) return res.status(404).json({ success: false, message: 'Usuario no encontrado' })
-      return res.status(200).json({ success: true, message: 'Usuario actualizado con éxito', data: actualizado })
+        // 1. Actualizar datos básicos en tabla 'usuario'
+        const actualizado = await UsuarioModel.update(id, { nombre, apellido, dni, email, id_rol });
+        
+        if (!actualizado) {
+            return res.status(404).json({ success: false, message: 'Usuario no encontrado' });
+        }
+
+        // 2. Si es especialista (id_rol === 3), actualizamos su especialidad
+        if (id_rol === 3) {
+            // Nota: Aquí pasamos el 'id' (que es el id_usuario) 
+            // porque tu EspecialistaModel.update ya hace el WHERE por id_usuario.
+            await EspecialistaModel.update(id, { especialidad }); 
+        }
+        
+        return res.status(200).json({ success: true, message: 'Usuario actualizado con éxito' });
     } catch (error) {
-      return res.status(500).json({ success: false, message: 'Error al actualizar usuario', error: error.message })
+        console.error("Error en updateUsuario:", error); // Útil para ver el error real en la terminal
+        return res.status(500).json({ success: false, message: 'Error al actualizar', error: error.message });
     }
   },
 
-  deleteUsuario: async (req, res) => {
-    const { id } = req.params
+  
+ // En usuarioController.js
+darDeBaja: async (req, res) => {
+    const { id } = req.params; // Asegúrate que tu ruta le pase este parámetro
     try {
-      const desactivado = await UsuarioModel.deleteLogic(id)
-      if (!desactivado) return res.status(404).json({ success: false, message: 'Usuario no encontrado' })
-      return res.status(200).json({ success: true, message: 'Usuario desactivado correctamente' })
+      const usuarioDesactivado = await UsuarioModel.deleteLogic(id);
+      
+      // Si el modelo retorna algo, significa que se desactivó correctamente
+      if (!usuarioDesactivado) {
+        return res.status(404).json({ success: false, message: 'Usuario no encontrado' });
+      }
+
+      return res.status(200).json({ 
+        success: true, 
+        message: 'Usuario desactivado correctamente',
+        data: usuarioDesactivado 
+      });
     } catch (error) {
-      return res.status(500).json({ success: false, message: 'Error al desactivar usuario', error: error.message })
+      return res.status(500).json({ success: false, message: 'Error al desactivar', error: error.message });
     }
   },
+// En usuarioController.js
+darDeAlta: async (req, res) => {
+    const { id } = req.params;
+    try {
+        // Ahora usamos el modelo, tal como hacemos con la baja
+        const usuarioActivado = await UsuarioModel.restoreLogic(id);
+        
+        if (!usuarioActivado) {
+            return res.status(404).json({ success: false, message: 'Usuario no encontrado' });
+        }
+
+        return res.status(200).json({ success: true, message: 'Usuario reactivado', data: usuarioActivado });
+    } catch (error) {
+        return res.status(500).json({ success: false, message: error.message });
+    }
+  },
+
+
 
   searchUsuarios: async (req, res) => {
     const { nombre } = req.query

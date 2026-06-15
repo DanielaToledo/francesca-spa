@@ -21,21 +21,21 @@ export const especialistaController = {
     }
   },
 
- createEspecialista: async (req, res) => {
-    // Extraemos id_usuario, especialidad y los servicios seleccionados (serviciosIds)
+createEspecialista: async (req, res) => {
     const { id_usuario, especialidad, serviciosIds } = req.body;
+    console.log("Datos recibidos en controlador:", req.body); // <-- AGREGAR ESTO
 
     try {
-      // Validamos que al menos haya un servicio seleccionado
       if (!serviciosIds || serviciosIds.length === 0) {
         return res.status(400).json({ success: false, message: 'Debe seleccionar al menos un servicio' });
       }
 
-      // Llamamos al modelo que maneja la transacción
       const nuevoEspecialista = await EspecialistaModel.createWithServices(
         { id_usuario, especialidad }, 
         serviciosIds
       );
+
+      console.log("Resultado del modelo:", nuevoEspecialista); // <-- AGREGAR ESTO
 
       return res.status(201).json({ 
         success: true, 
@@ -43,13 +43,14 @@ export const especialistaController = {
         data: nuevoEspecialista 
       });
     } catch (error) {
+      console.error("ERROR DETECTADO EN CONTROLADOR:", error); // <-- MUY IMPORTANTE
       return res.status(500).json({ 
         success: false, 
         message: 'Error al registrar el especialista', 
         error: error.message 
       });
     }
-  },
+},
 
 // En especialistasController.js
 getConfiguracion: async (req, res) => {
@@ -77,6 +78,17 @@ getConfiguracion: async (req, res) => {
     } catch (error) {
       return res.status(500).json({ success: false, message: error.message });
     }
-  }
+  },
 
+updateEspecialidad: async (req, res) => {
+    const { id_especialista } = req.params;
+    const { especialidad } = req.body;
+    try {
+        // Llamamos al método que ya tienes definido en el modelo
+        await EspecialistaModel.updatePorIdEspecialista(id_especialista, { especialidad });
+        return res.status(200).json({ success: true, message: 'Especialidad actualizada' });
+    } catch (error) {
+        return res.status(500).json({ success: false, message: error.message });
+    }
+},
 }

@@ -44,10 +44,10 @@ export default function Sidebar() {
                     {(user?.rol === 'Administrador' || user?.rol === 'Admin') && (
                         <>
                             <Link to="/admin/dashboard" className={`flex items-center gap-3 px-4 py-2.5 text-sm font-medium rounded-lg ${isActive('/admin/dashboard') ? 'bg-[#F4CFCC]/60 text-[#A87379] font-bold' : 'hover:bg-white text-slate-600'}`}>
-                                ✨ Gestionar Servicios
+                             Gestionar Servicios
                             </Link>
                             <Link to="/admin/usuarios" className={`flex items-center gap-3 px-4 py-2.5 text-sm font-medium rounded-lg ${isActive('/admin/usuarios') ? 'bg-[#F4CFCC]/60 text-[#A87379] font-bold' : 'hover:bg-white text-slate-600'}`}>
-                                👥 Gestionar Personal
+                             Gestionar Personal
                             </Link>
                         </>
                     )}
@@ -56,23 +56,23 @@ export default function Sidebar() {
                     {user?.rol === 'Especialista' && (
                         <>
                             <Link to="/especialista/agenda" className={`flex items-center gap-3 px-4 py-2.5 text-sm font-medium rounded-lg ${isActive('/especialista/agenda') ? 'bg-[#F4CFCC]/60 text-[#A87379] font-bold' : 'hover:bg-white text-slate-600'}`}>
-                                📅 Mi Agenda Citas
+                             Mi Agenda Citas
                             </Link>
                             <Link to="/especialista/buscar-paciente" className={`flex items-center gap-3 px-4 py-2.5 text-sm font-medium rounded-lg ${isActive('/especialista/buscar-paciente') ? 'bg-[#F4CFCC]/60 text-[#A87379] font-bold' : 'hover:bg-white text-slate-600'}`}>
-                                🔍 Buscar Paciente
+                             Buscar Paciente
                             </Link>
                             <Link
                                 to="/especialista/disponibilidad"
                                 className={`flex items-center gap-3 px-4 py-2.5 text-sm font-medium rounded-lg ${isActive('/especialista/disponibilidad') ? 'bg-[#F4CFCC]/60 text-[#A87379] font-bold' : 'hover:bg-white text-slate-600'}`}
                             >
-                                📅 Gestión de Disponibilidad
+                            Gestión de Disponibilidad
                             </Link>
 {/* NUEVA OPCIÓN */}
         <Link
             to="/especialista/perfil"
             className={`flex items-center gap-3 px-4 py-2.5 text-sm font-medium rounded-lg ${isActive('/especialista/perfil') ? 'bg-[#F4CFCC]/60 text-[#A87379] font-bold' : 'hover:bg-white text-slate-600'}`}
         >
-            ⚙️ Mi Configuración
+            Mi Configuración
         </Link>
                         </>
                     )}
@@ -81,10 +81,10 @@ export default function Sidebar() {
                     {user?.rol === 'Cliente' && (
                         <>
                             <Link to="/cliente/dashboard" className={`flex items-center gap-3 px-4 py-2.5 text-sm font-medium rounded-lg ${isActive('/cliente/dashboard') ? 'bg-[#F4CFCC]/60 text-[#A87379] font-bold' : 'hover:bg-white text-slate-600'}`}>
-                                💆‍♀️ Mis Turnos
+                                Mis Turnos
                             </Link>
                             <Link to="/cliente/reservar" className={`flex items-center gap-3 px-4 py-2.5 text-sm font-medium rounded-lg ${isActive('/cliente/reservar') ? 'bg-[#F4CFCC]/60 text-[#A87379] font-bold' : 'hover:bg-white text-slate-600'}`}>
-                                📅 Reservar Turno
+                                Reservar Turno
                             </Link>
                         </>
                     )}

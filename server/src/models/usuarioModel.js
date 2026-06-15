@@ -4,9 +4,19 @@ export const UsuarioModel = {
   // 1. Obtener todos los usuarios con su nombre de rol
   getAll: async () => {
     const query = `
-      SELECT u.id_usuario, u.nombre, u.apellido, u.dni, u.email, u.activo, u.id_rol, r.nombre_rol
+      SELECT 
+        u.id_usuario, 
+        u.nombre, 
+        u.apellido, 
+        u.dni, 
+        u.email, 
+        u.activo, 
+        u.id_rol, 
+        r.nombre_rol,
+        e.especialidad
       FROM usuario u
       INNER JOIN rol r ON u.id_rol = r.id_rol
+      LEFT JOIN especialista e ON u.id_usuario = e.id_usuario
       ORDER BY u.id_usuario DESC;
     `
     const { rows } = await pool.query(query)
@@ -38,17 +48,19 @@ export const UsuarioModel = {
   },
 
   // 4. Actualizar datos del usuario
-  update: async (id_usuario, updateData) => {
-    const { nombre, apellido, dni, email, id_rol } = updateData
+  // 4. Actualizar datos del usuario
+// En models/usuarioModel.js
+update: async (id_usuario, updateData) => {
+    const { nombre, apellido, dni, email, id_rol } = updateData;
     const query = `
       UPDATE usuario
       SET nombre = $2, apellido = $3, dni = $4, email = $5, id_rol = $6
       WHERE id_usuario = $1
-      RETURNING id_usuario, nombre, apellido, dni, email, id_rol, activo;
-    `
-    const { rows } = await pool.query(query, [id_usuario, nombre, apellido, dni, email, id_rol])
-    return rows[0]
-  },
+      RETURNING id_usuario;
+    `;
+    const { rows } = await pool.query(query, [id_usuario, nombre, apellido, dni, email, id_rol]);
+    return rows[0];
+},
 
   // 5. Baja lógica
   deleteLogic: async (id_usuario) => {
@@ -62,6 +74,18 @@ export const UsuarioModel = {
     return rows[0]
   },
 
+
+  // 5.1 Alta lógica (Agrega esto)
+  restoreLogic: async (id_usuario) => {
+    const query = `
+      UPDATE usuario
+      SET activo = true
+      WHERE id_usuario = $1
+      RETURNING id_usuario, activo;
+    `
+    const { rows } = await pool.query(query, [id_usuario])
+    return rows[0]
+  },
   // 6. Buscador inteligente
  // 6. Buscador inteligente (¡Ahora busca también por Rol!)
   searchByName: async (termino) => {

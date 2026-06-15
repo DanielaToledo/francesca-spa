@@ -12,6 +12,10 @@ router.get('/filtrar', usuarioController.getUsuariosByRol)   // GET /api/usuario
 router.get('/:id', usuarioController.getUsuarioById)
 router.post('/', usuarioController.createUsuario)
 router.put('/:id', usuarioController.updateUsuario)
-router.delete('/:id', usuarioController.deleteUsuario)
+router.patch('/:id/baja', usuarioController.darDeBaja);
+router.patch('/:id/alta', usuarioController.darDeAlta);
+
 
 export default router
+
+

@@ -39,38 +39,42 @@ export const EspecialistaModel = {
   },
 
   // Nuevo método en EspecialistaModel
-  createWithServices: async (especialistaData, serviciosIds) => {
+  // En tu EspecialistaModel.js
+createWithServices: async (especialistaData, serviciosIds) => {
     const client = await pool.connect();
     try {
-      await client.query('BEGIN');
+        await client.query('BEGIN');
 
-      // 1. Crear el especialista
-      const queryEspecialista = `
-        INSERT INTO especialista (id_usuario, especialidad)
-        VALUES ($1, $2) RETURNING id_especialista;
-      `;
-      const res = await client.query(queryEspecialista, [especialistaData.id_usuario, especialistaData.especialidad]);
-      const id_especialista = res.rows[0].id_especialista;
+        // USAMOS ON CONFLICT para que si ya existe, no tire error, sino que lo ignore o actualice
+        const queryEspecialista = `
+            INSERT INTO especialista (id_usuario, especialidad)
+            VALUES ($1, $2)
+            ON CONFLICT (id_usuario) 
+            DO UPDATE SET especialidad = EXCLUDED.especialidad
+            RETURNING id_especialista;
+        `;
+        const res = await client.query(queryEspecialista, [especialistaData.id_usuario, especialistaData.especialidad]);
+        const id_especialista = res.rows[0].id_especialista;
 
-      // 2. Insertar servicios (Bucle)
-      const queryServicio = `
-        INSERT INTO especialista_servicio (id_especialista, id_servicio)
-        VALUES ($1, $2);
-      `;
-      for (const id_servicio of serviciosIds) {
-        await client.query(queryServicio, [id_especialista, id_servicio]);
-      }
+        // Limpiamos servicios anteriores antes de insertar los nuevos (para evitar duplicados)
+        await client.query('DELETE FROM especialista_servicio WHERE id_especialista = $1', [id_especialista]);
 
-      await client.query('COMMIT');
-      return { id_especialista };
+        // Insertar servicios
+        if (serviciosIds && serviciosIds.length > 0) {
+            const values = serviciosIds.map((_, i) => `($1, $${i + 2})`).join(', ');
+            const queryServicios = `INSERT INTO especialista_servicio (id_especialista, id_servicio) VALUES ${values};`;
+            await client.query(queryServicios, [id_especialista, ...serviciosIds]);
+        }
+
+        await client.query('COMMIT');
+        return { id_especialista };
     } catch (error) {
-      await client.query('ROLLBACK');
-      throw error;
+        await client.query('ROLLBACK');
+        throw error;
     } finally {
-      client.release();
+        client.release();
     }
-  },
-
+},
   // Nueva función para actualizar la configuración
   updateConfiguracion: async (id_especialista, configuracion) => {
     const query = `
@@ -81,5 +85,11 @@ export const EspecialistaModel = {
     `;
     const { rows } = await pool.query(query, [JSON.stringify(configuracion), id_especialista]);
     return rows[0];
-  }
+  },
+
+  // En models/especialistaModel.js
+update: async (id_usuario, data) => {
+    const query = `UPDATE especialista SET especialidad = $1 WHERE id_usuario = $2`;
+    await pool.query(query, [data.especialidad, id_usuario]);
+}
 }

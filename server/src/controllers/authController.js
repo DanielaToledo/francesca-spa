@@ -1,3 +1,8 @@
+//1. authController.js (La puerta de entrada)
+// Su misión principal es la Identidad Para el Cliente: Sí, es el que usas cuando un cliente se registra en la app.
+//Para el Admin/Staff: También se usa para el Login. 
+// Es el que verifica si el correo y la contraseña son correctos y genera el token (la "llave" que permite navegar por la app
+
 import pool from '../config/dbConfig.js'
 import bcrypt from 'bcrypt'
 import jwt from 'jsonwebtoken'
@@ -7,8 +12,8 @@ const JWT_SECRET = process.env.JWT_SECRET
 
 export const authController = {
     register: async (req, res) => {
-        // Recibimos 'especialidad' desde el frontend
-        const { nombre, apellido, dni, email, password, id_rol, serviciosIds, especialidad } = req.body;
+        // Ahora solo recibimos los datos básicos de usuario
+        const { nombre, apellido, dni, email, password, id_rol } = req.body;
 
         try {
             const existeUser = await pool.query('SELECT * FROM usuario WHERE email = $1', [email]);
@@ -19,8 +24,6 @@ export const authController = {
             const salt = await bcrypt.genSalt(10);
             const password_hash = await bcrypt.hash(password, salt);
 
-            await pool.query('BEGIN');
-
             // 1. Insertar Usuario
             const userQuery = `
                 INSERT INTO usuario (nombre, apellido, dni, email, password_hash, id_rol)
@@ -28,23 +31,6 @@ export const authController = {
             `;
             const userRes = await pool.query(userQuery, [nombre, apellido, dni, email, password_hash, id_rol]);
             const nuevoUsuario = userRes.rows[0];
-
-            // 2. Si el rol es Especialista (ID 3)
-            if (id_rol === 3) {
-                // Insertamos la especialidad aquí
-                const espQuery = `INSERT INTO especialista (id_usuario, especialidad) VALUES ($1, $2) RETURNING id_especialista;`;
-                const espRes = await pool.query(espQuery, [nuevoUsuario.id_usuario, especialidad || 'General']);
-                const id_especialista = espRes.rows[0].id_especialista;
-
-                // 3. Insertar relación de servicios
-                if (serviciosIds && serviciosIds.length > 0) {
-                    for (let id_servicio of serviciosIds) {
-                        await pool.query('INSERT INTO especialista_servicio (id_especialista, id_servicio) VALUES ($1, $2)', [id_especialista, id_servicio]);
-                    }
-                }
-            }
-
-            await pool.query('COMMIT');
 
             return res.status(201).json({ 
                 success: true, 
@@ -58,7 +44,6 @@ export const authController = {
             });
 
         } catch (error) {
-            await pool.query('ROLLBACK');
             console.error("ERROR DETECTADO EN BACKEND:", error);
             return res.status(500).json({ success: false, message: 'Error en el registro', error: error.message });
         }
