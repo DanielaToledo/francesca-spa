@@ -14,17 +14,17 @@ export const EspecialistaModel = {
     return rows
   },
 
-  // 2. Obtener un especialista por su ID
-  getById: async (id_especialista) => {
+  // 2. Obtener un especialista por su ID con datos de usuario y configuración
+getById: async (id_especialista) => {
     const query = `
-      SELECT e.id_especialista, e.especialidad, u.nombre, u.apellido, u.email, u.activo, e.id_usuario
+      SELECT e.id_especialista, e.especialidad, u.nombre, u.apellido, u.email, u.activo, e.id_usuario, e.configuracion_agenda
       FROM especialista e
       INNER JOIN usuario u ON e.id_usuario = u.id_usuario
       WHERE e.id_especialista = $1;
-    `
+    `;
     const { rows } = await pool.query(query, [id_especialista])
     return rows[0]
-  },
+},
 
   // 3. Vincular un usuario existente como Especialista
   create: async (especialistaData) => {
@@ -91,5 +91,7 @@ createWithServices: async (especialistaData, serviciosIds) => {
 update: async (id_usuario, data) => {
     const query = `UPDATE especialista SET especialidad = $1 WHERE id_usuario = $2`;
     await pool.query(query, [data.especialidad, id_usuario]);
-}
+},
+
+
 }

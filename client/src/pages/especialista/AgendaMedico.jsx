@@ -1,3 +1,8 @@
+//Este es el corazón de la gestión diaria del especialista.
+//Aquí el especialista ve su agenda real del día, con los turnos que tiene asignados,
+//y puede acceder a la ficha de cada cliente para ver su historial, notas, etc.
+
+
 import { useState, useEffect } from 'react'
 import { useAuth } from '../../context/AuthContext'
 import { useNavigate } from 'react-router-dom'

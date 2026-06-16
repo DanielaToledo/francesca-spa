@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { serviciosService } from '../../services/servicioService'
 
-export default function PanelControl() {
+export default function GestionServicios() {
   const [servicios, setServicios] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)

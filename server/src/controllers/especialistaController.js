@@ -52,22 +52,26 @@ createEspecialista: async (req, res) => {
     }
 },
 
-// En especialistasController.js
+// Nuevos métodos para configuración de agenda
 getConfiguracion: async (req, res) => {
     const { id_especialista } = req.params;
     try {
         const especialista = await EspecialistaModel.getById(id_especialista);
         
-        // ¡OJO AQUÍ! Verifica qué trae 'especialista'. 
-        // Si tu base de datos tiene la columna 'configuracion_agenda', accedes a ella:
+        if (!especialista) {
+            return res.status(404).json({ success: false, message: 'Especialista no encontrado' });
+        }
+
+        // Ahora 'especialista.configuracion_agenda' vendrá con los datos que vimos en tu captura
         const config = especialista.configuracion_agenda || {}; 
         
-        // Asegúrate de enviar 'data' dentro de la respuesta
         return res.status(200).json({ success: true, data: config });
     } catch (error) {
         return res.status(500).json({ success: false, message: error.message });
     }
 },
+
+
 
   updateConfiguracion: async (req, res) => {
     const { id_especialista } = req.params;

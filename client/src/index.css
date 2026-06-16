@@ -42,3 +42,26 @@
 .animate-pop-in {
   animation: pop-in 0.4s ease-out forwards;
 }
+
+
+
+/* calendario en disponibilidad - Día de hoy en Amarillo */
+.react-calendar__tile--now {
+    background: #fef08a !important; /* Amarillo suave */
+}
+
+.dia-bloqueado-rojo {
+    background-color: #A87379 !important; 
+    color: white !important;
+    border-radius: 50% !important;
+}
+
+.dia-con-bloqueos-parciales {
+    background-color: #3b82f6 !important;
+    color: white !important;
+    border-radius: 50% !important;
+}
+.dia-bloqueado-base {
+    background-color: #f1f5f9 !important; /* Gris claro */
+    color: #94a3b8 !important;
+}

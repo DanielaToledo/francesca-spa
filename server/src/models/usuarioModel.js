@@ -2,7 +2,7 @@ import pool from '../config/dbConfig.js'
 
 export const UsuarioModel = {
   // 1. Obtener todos los usuarios con su nombre de rol
-  getAll: async () => {
+getAll: async () => {
     const query = `
       SELECT 
         u.id_usuario, 
@@ -13,13 +13,21 @@ export const UsuarioModel = {
         u.activo, 
         u.id_rol, 
         r.nombre_rol,
-        e.especialidad
+        e.especialidad,
+        STRING_AGG(s.nombre_servicio, ', ') AS lista_servicios
       FROM usuario u
       INNER JOIN rol r ON u.id_rol = r.id_rol
       LEFT JOIN especialista e ON u.id_usuario = e.id_usuario
+      LEFT JOIN especialista_servicio es ON e.id_especialista = es.id_especialista
+      LEFT JOIN servicio s ON es.id_servicio = s.id_servicio
+      GROUP BY 
+        u.id_usuario, 
+        r.nombre_rol, 
+        e.especialidad
       ORDER BY u.id_usuario DESC;
     `
     const { rows } = await pool.query(query)
+    console.log("Datos de la tabla:", rows); // <-- ¡MIRA ESTO EN TU TERMINAL!
     return rows
   },
 

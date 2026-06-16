@@ -1,74 +1,97 @@
+//Disponibilidad (Disponibilidad.jsx): Es la Gestión de Excepciones. 
+// Es para el "día a día": "Este jueves tengo que salir a las 15:00 por un trámite" 
+// o "Voy a abrir el sábado de mañana solo por esta vez".
+
 import { useState, useEffect } from 'react';
 import Calendar from 'react-calendar';
 import 'react-calendar/dist/Calendar.css';
 import { format } from 'date-fns';
-import axios from 'axios';
+import axios from 'axios'; // Recuerda que prefieres AXIOS
 import SelectorHorarios from '../../components/especialistas/SelectorHorarios';
 import { useAuth } from '../../context/AuthContext';
 
 export default function Disponibilidad() {
     const { user } = useAuth();
     const [fechaSeleccionada, setFechaSeleccionada] = useState(new Date());
-    const [diasConBloqueo, setDiasConBloqueo] = useState([]);
+    const [diasBloqueados, setDiasBloqueados] = useState({});
+    const [configuracion, setConfiguracion] = useState(null);
 
     const idEspecialista = user?.id_especialista;
 
-    // Cargar bloqueos al iniciar
-useEffect(() => {
-        const cargarBloqueos = async () => {
-            if (idEspecialista) {
-                try {
-                    const response = await axios.get(`/api/bloqueos/${idEspecialista}`);
-                    
-                    // Ajuste: verificamos si response.data es un array o si debemos buscar dentro de un objeto
-                    const dataArray = Array.isArray(response.data) 
-                        ? response.data 
-                        : (response.data.data || []); // Aquí buscamos dentro de response.data.data si el array no está directo
+ useEffect(() => {
+    const cargarAgendaCompleta = async () => {
+        if (!idEspecialista) return;
 
-                    const fechas = dataArray.map(b => format(new Date(b.fecha_inicio), 'yyyy-MM-dd'));
-                    setDiasConBloqueo(fechas);
-                } catch (err) {
-                    console.error("Error cargando bloqueos:", err);
-                }
-            }
-        };
-        cargarBloqueos();
-    }, [idEspecialista]);
-
-    // Función para registrar un nuevo bloqueo usando AXIOS
-    const registrarBloqueo = async (datosBloqueo) => {
         try {
-            const response = await axios.post('/api/bloqueos', datosBloqueo);
-            if (response.data.success) {
-                alert('Bloqueo registrado con éxito');
-                window.location.reload(); 
+            const res = await axios.get(`/api/turnos/agenda/resumen/${idEspecialista}`);
+            
+            // LOG DE DEPURACIÓN CRÍTICO
+            console.log("LOG ESTRUCTURA COMPLETA:", JSON.stringify(res.data, null, 2));
+
+            // Si res.data es un string (porque el backend devolvió un html), el JSON.stringify fallará
+            // Pero como vimos que devuelve JSON, busquemos dónde está el bloque "data"
+            const datos = res.data.data || res.data; 
+
+            if (!datos || typeof datos !== 'object') {
+                console.error("DEBUG: La estructura de res.data no es la esperada", res.data);
+                return;
             }
+
+            // Procesar bloqueos
+            const bloqueos = datos.bloqueos || [];
+            const contadorDias = {};
+            
+            bloqueos.forEach(b => {
+                const fecha = b.fecha_inicio.split('T')[0];
+                contadorDias[fecha] = (contadorDias[fecha] || 0) + 1;
+            });
+
+            setDiasBloqueados(contadorDias);
+            setConfiguracion(datos);
+            console.log("¡Carga exitosa!");
+                
         } catch (err) {
-            console.error("Error al registrar bloqueo:", err);
-            alert('Hubo un error al guardar el bloqueo.');
+            console.error("Error al cargar en Disponibilidad:", err);
         }
+    };
+    cargarAgendaCompleta();
+}, [idEspecialista]);
+
+    const tileClassName = ({ date, view }) => {
+        if (view === 'month') {
+            const fechaStr = format(date, 'yyyy-MM-dd');
+            const diaSemana = format(date, 'EEEE').toLowerCase(); // ej: 'sunday'
+            const cantidadBloqueos = diasBloqueados[fechaStr] || 0;
+
+            // Lógica de Pintado:
+            // 1. Si está bloqueado manualmente
+            if (cantidadBloqueos >= 6) return 'dia-bloqueado-rojo';
+            if (cantidadBloqueos > 0) return 'dia-con-bloqueos-parciales';
+
+            // 2. Si es un día no laboral según configuración (ej: domingo 00:00-00:00)
+            if (configuracion && configuracion[diaSemana]?.inicio === "00:00") {
+                return 'dia-bloqueado-base'; // Necesitas crear este estilo en CSS
+            }
+        }
+        return null;
     };
 
     if (!idEspecialista) return <p className="p-6 text-center">Cargando...</p>;
 
-return (
-        <div className="p-6 max-w-7xl mx-auto"> {/* Maximo ancho aumentado */}
+    return (
+        <div className="p-6 max-w-7xl mx-auto">
             <h2 className="text-2xl font-bold text-[#A87379] mb-6">Gestión de Agenda</h2>
             
             <div className="grid grid-cols-1 lg:grid-cols-[1fr_450px] gap-8">
-                
-                {/* Panel Izquierdo: Calendario Grande */}
-                <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 w-full">
-    <Calendar 
-        onChange={setFechaSeleccionada} 
-        value={fechaSeleccionada} 
-        className="w-full !border-none text-lg" // El !important asegura que sobrescriba
-        // Estas clases estiran los botones de los días
-        tileClassName="min-h-[80px] flex flex-col items-center justify-start p-2" 
-    />
-</div>
+                <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
+                    <Calendar 
+                        onChange={setFechaSeleccionada} 
+                        value={fechaSeleccionada} 
+                        className="w-full !border-none"
+                        tileClassName={tileClassName}
+                    />
+                </div>
 
-                {/* Panel Derecho: Selector y Lista (Lo que ya hicimos) */}
                 <div className="space-y-6">
                     <SelectorHorarios 
                         fecha={fechaSeleccionada} 

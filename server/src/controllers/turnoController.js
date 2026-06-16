@@ -1,5 +1,6 @@
 import { TurnoModel } from '../models/turnoModel.js'
 import { BloqueoAgendaModel } from '../models/bloqueoAgendaModel.js' 
+import { EspecialistaModel } from '../models/especialistaModel.js' // Importamos el modelo para acceder a la configuración
 
 export const turnoController = {
     getTurnos: async (req, res) => {
@@ -158,43 +159,33 @@ createTurno: async (req, res) => {
     }
 },
 
-
 getResumenAgenda: async (req, res) => {
     const { id_especialista } = req.params;
-    const { fecha } = req.query; // Esperamos formato 'YYYY-MM-DD'
-
     try {
-        // Ejecutamos ambas consultas en paralelo
-        const [turnos, bloqueos] = await Promise.all([
+        const [turnos, bloqueos, especialista] = await Promise.all([
             TurnoModel.getByEspecialista(id_especialista),
-            BloqueoAgendaModel.getBloqueos(id_especialista)
+            BloqueoAgendaModel.getBloqueos(id_especialista),
+            EspecialistaModel.getById(id_especialista)
         ]);
 
-        // Filtramos asegurándonos de que siempre tratamos con strings
-        const turnosDia = turnos.filter(t => {
-            const fechaStr = t.fecha_hora instanceof Date 
-                ? t.fecha_hora.toISOString() 
-                : String(t.fecha_hora);
-            return fechaStr.startsWith(fecha);
-        });
+        let config = especialista?.configuracion_agenda || {};
+        // Aseguramos que sea objeto
+        if (typeof config === 'string') {
+            try { config = JSON.parse(config); } catch(e) { config = {}; }
+        }
 
-        const bloqueosDia = bloqueos.filter(b => {
-            const fechaStr = b.fecha_inicio instanceof Date 
-                ? b.fecha_inicio.toISOString() 
-                : String(b.fecha_inicio);
-            return fechaStr.startsWith(fecha);
-        });
-
+        // FUERZA LA ESTRUCTURA AQUÍ
         return res.status(200).json({ 
             success: true, 
             data: { 
-                turnos: turnosDia, 
-                bloqueos: bloqueosDia 
+                bloqueos: bloqueos || [], // SIEMPRE envía un array, aunque esté vacío
+                turnos: turnos || [],
+                ...config
             } 
         });
     } catch (error) {
-        console.error("Error en getResumenAgenda:", error);
-        return res.status(500).json({ success: false, message: 'Error al obtener resumen de la agenda' });
+        return res.status(500).json({ success: false, message: 'Error' });
     }
 },
+
 }

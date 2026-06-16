@@ -1,3 +1,9 @@
+//Perfil (Perfil.jsx): Es la Configuración Estructural. 
+// Aquí el especialista define su "regla de oro": "Yo trabajo de lunes a viernes de 9:00 a 18:00 y 
+// no trabajo los feriados ni mi cumpleaños". 
+// Es lo que alimenta la base del calendario del cliente.
+
+
 import { useState, useEffect } from 'react';
 import { especialistaService } from '../../services/especialistaService';
 import ConfiguracionAgenda from '../../components/especialistas/ConfiguracionAgenda';
