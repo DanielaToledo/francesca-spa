@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useAuth } from '../../context/AuthContext'
-import { useNavigate, Link } from 'react-router-dom'
+import { useNavigate, Link, useLocation } from 'react-router-dom'
 
 export default function Login() {
     const [email, setEmail] = useState('')
@@ -10,6 +10,10 @@ export default function Login() {
 
     const { loginUser } = useAuth()
     const navigate = useNavigate()
+    const location = useLocation()
+
+    // Obtenemos la ruta previa donde estaba el usuario, o null si vino directo al login
+    const from = location.state?.from?.pathname || null
 
     const handleSubmit = async (e) => {
         e.preventDefault()
@@ -25,18 +29,23 @@ export default function Login() {
             setLoading(true)
             const usuario = await loginUser(email, password)
             
-            // Evaluamos el rol exacto que viene de tu base de datos
-            if (usuario.rol === 'Cliente') {
-                navigate('/cliente/dashboard')
-            } else if (usuario.rol === 'Recepcion' || usuario.rol === 'Recepción') { 
-                navigate('/recepcion/agenda')
-            } else if (usuario.rol === 'Admin' || usuario.rol === 'Administrador') {
-                navigate('/admin/dashboard')
-            } else if (usuario.rol === 'Especialista') {
-                // 🚀 ¡SOLUCIÓN! Ahora redirige de forma segura a la agenda del profesional
-                navigate('/especialista/agenda')
+            // 🚀 Lógica de redirección inteligente
+            if (from) {
+                // Si el usuario intentó entrar a una página protegida, lo enviamos de vuelta allí
+                navigate(from, { replace: true })
             } else {
-                setError(`Acceso concedido, pero el rol "${usuario.rol}" no tiene un panel asignado.`)
+                // Si entró al login directamente, lo enviamos según su rol
+                if (usuario.rol === 'Cliente') {
+                    navigate('/cliente/dashboard')
+                } else if (usuario.rol === 'Recepcion' || usuario.rol === 'Recepción') { 
+                    navigate('/recepcion/agenda')
+                } else if (usuario.rol === 'Admin' || usuario.rol === 'Administrador') {
+                    navigate('/admin/dashboard')
+                } else if (usuario.rol === 'Especialista') {
+                    navigate('/especialista/agenda')
+                } else {
+                    setError(`Acceso concedido, pero el rol "${usuario.rol}" no tiene un panel asignado.`)
+                }
             }
         } catch (err) {
             setError(err.message || 'Error al iniciar sesión')
@@ -46,12 +55,9 @@ export default function Login() {
     }
 
     return (
-        // 🌌 Fondo general iluminado #FBF9F8
         <div className="min-h-screen bg-[#FBF9F8] flex items-center justify-center p-4">
-            {/* Tarjeta de login en Blanco Puro con bordes finos en rosa pastel */}
             <div className="bg-white p-8 rounded-2xl shadow-xl w-full max-w-md border border-[#F4CFCC]/40">
                 
-                {/* Título en tu rosa viejo sofisticado #A87379 */}
                 <h2 className="text-3xl font-bold text-[#A87379] text-center mb-2">¡Hola otra vez! 💆‍♀️</h2>
                 <p className="text-sm text-slate-500 text-center mb-6">Ingresa tus datos para gestionar el Spa</p>
 
@@ -69,7 +75,6 @@ export default function Login() {
                             value={email}
                             onChange={(e) => setEmail(e.target.value)}
                             placeholder="correo@spa.com"
-                            // Enfoque brilla en tu rosa principal #EAA0AB
                             className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#EAA0AB] text-sm"
                         />
                     </div>
@@ -85,7 +90,6 @@ export default function Login() {
                         />
                     </div>
 
-                    {/* Botón principal usando tu rosa viejo elegante #A87379 */}
                     <button
                         type="submit"
                         disabled={loading}

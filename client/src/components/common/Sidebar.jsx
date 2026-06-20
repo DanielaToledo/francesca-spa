@@ -1,32 +1,34 @@
-import { useAuth } from '../../context/AuthContext'
-import { useNavigate, Link, useLocation } from 'react-router-dom'
-import { 
-    LayoutDashboard, 
-    Users, 
-    Scissors, 
-    Calendar, 
-    UserSearch, 
-    Settings, 
-    LogOut, 
+import { useAuth } from '../../context/AuthContext';
+import { useNavigate, Link, useLocation } from 'react-router-dom';
+import {
+    LayoutDashboard,
+    Users,
+    Scissors,
+    Calendar,
+    UserSearch,
+    Settings,
+    LogOut,
     ClipboardList,
     PlusCircle
 } from 'lucide-react';
 
 export default function Sidebar() {
-    const { user, logoutUser } = useAuth()
-    const navigate = useNavigate()
-    const location = useLocation()
+    const { user, logoutUser } = useAuth();
+    const navigate = useNavigate();
+    const location = useLocation();
 
     const handleLogout = () => {
-        logoutUser()
-        navigate('/login')
-    }
+        logoutUser();
+        navigate('/login');
+    };
 
-    const isActive = (path) => location.pathname === path
+    const isActive = (path) => location.pathname === path;
 
     return (
-        <aside className="w-full md:w-64 min-h-screen bg-[#FBF9F8] text-slate-700 flex flex-col border-r border-[#F4CFCC]/40 justify-between">
-            <div className="flex flex-col flex-1">
+        <aside className="w-full md:w-64 h-screen bg-[#FBF9F8] text-slate-700 flex flex-col border-r border-[#F4CFCC]/40">
+
+            {/* Contenedor con scroll: aquí va todo el contenido dinámico */}
+            <div className="flex-1 overflow-y-auto">
                 {/* Logo */}
                 <div className="p-6 border-b border-[#F4CFCC]/30">
                     <h1 className="text-xl font-bold text-[#A87379] tracking-wide">Spa Francesca</h1>
@@ -70,7 +72,14 @@ export default function Sidebar() {
                             <Link to="/especialista/disponibilidad" className={`flex items-center gap-3 px-4 py-2.5 text-sm font-medium rounded-lg ${isActive('/especialista/disponibilidad') ? 'bg-[#F4CFCC]/60 text-[#A87379] font-bold' : 'hover:bg-white text-slate-600'}`}>
                                 <Settings size={18} /> Disponibilidad
                             </Link>
-                            <Link to="/especialista/perfil" className={`flex items-center gap-3 px-4 py-2.5 text-sm font-medium rounded-lg ${isActive('/especialista/perfil') ? 'bg-[#F4CFCC]/60 text-[#A87379] font-bold' : 'hover:bg-white text-slate-600'}`}>
+                            <Link
+                                to="/especialista/perfil"
+                                className={`flex items-center gap-3 px-4 py-2.5 text-sm font-medium rounded-lg 
+    ${isActive('/especialista/perfil')
+                                        ? 'bg-[#F4CFCC]/60 text-[#A87379] font-bold'
+                                        : 'hover:bg-white text-slate-600'
+                                    }`}
+                            >
                                 <Settings size={18} /> Mi Configuración
                             </Link>
                         </>
@@ -90,8 +99,8 @@ export default function Sidebar() {
                 </nav>
             </div>
 
-            {/* Botón Salir */}
-            <div className="p-4 border-t border-[#F4CFCC]/30 bg-[#FBF9F8]">
+            {/* Botón Salir: Fijo al final del Sidebar */}
+            <div className="p-4 border-t border-[#F4CFCC]/30 bg-[#FBF9F8] shrink-0">
                 <button
                     onClick={handleLogout}
                     className="w-full flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-semibold text-white bg-red-600 hover:bg-red-700 rounded-lg shadow-sm transition-all cursor-pointer border border-red-700"
@@ -100,5 +109,5 @@ export default function Sidebar() {
                 </button>
             </div>
         </aside>
-    )
+    );
 }

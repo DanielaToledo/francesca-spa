@@ -1,63 +1,83 @@
-import { createContext, useState, useEffect, useContext } from 'react'
-import { authService } from '../services/authService'
+import { createContext, useState, useEffect, useContext } from 'react';
+import { authService } from '../services/authService';
 
-// 1. Creamos el espacio de memoria flotante
-const AuthContext = createContext({})
+const AuthContext = createContext({});
 
-// 2. Creamos el Proveedor (el componente que va a envolver la app)
 export const AuthProvider = ({ children }) => {
-  const [user, setUser] = useState(null)         // Guarda datos del usuario (nombre, rol, etc.)
-  const [loading, setLoading] = useState(true)   // Para saber si está verificando la sesión al arrancar
+  const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true);
 
-  // Efecto para chequear si el usuario ya estaba logueado de antes
-useEffect(() => {
-    const token = localStorage.getItem('spa_token')
-    const savedUser = localStorage.getItem('spa_user')
+  // Verificación de sesión al cargar la app
+  useEffect(() => {
+    const checkAuth = () => {
+      const token = localStorage.getItem('spa_token');
+      const savedUser = localStorage.getItem('spa_user');
 
-    // Modificamos esto con un try/catch para que sea ultra seguro
-    if (token && savedUser && savedUser !== 'undefined') {
-      try {
-        setUser(JSON.parse(savedUser))
-      } catch (e) {
-        console.error("Error al parsear el usuario del localStorage:", e)
-        localStorage.removeItem('spa_user')
-        localStorage.removeItem('spa_token')
+      if (token && savedUser && savedUser !== 'undefined') {
+        try {
+          const parsedUser = JSON.parse(savedUser);
+          if (parsedUser && (parsedUser.id_usuario || parsedUser.id_especialista)) {
+            setUser(parsedUser);
+          } else {
+            throw new Error("Estructura de usuario inválida");
+          }
+        } catch (e) {
+          console.error("Error al validar sesión:", e);
+          logoutUser(); 
+        }
+      } else {
+        setUser(null);
       }
-    }
-    setLoading(false)
-  }, [])
+      setLoading(false);
+    };
 
-  // Función para manejar el inicio de sesión
-const loginUser = async (email, password) => {
+    checkAuth();
+  }, []);
+
+  // Sincronización entre pestañas
+  useEffect(() => {
+    const handleStorageChange = (e) => {
+      if (e.key === 'spa_token' && !e.newValue) {
+        logoutUser();
+      }
+    };
+    window.addEventListener('storage', handleStorageChange);
+    return () => window.removeEventListener('storage', handleStorageChange);
+  }, []);
+
+  const loginUser = async (email, password) => {
     try {
-      const data = await authService.login(email, password)
-      
-      // data trae: { success, message, token, user: { id_usuario, nombre, rol, ... } }
-      const usuarioLogueado = data.user 
+      const data = await authService.login(email, password);
+      const usuarioLogueado = data.user;
 
-      localStorage.setItem('spa_token', data.token)
-      localStorage.setItem('spa_user', JSON.stringify(usuarioLogueado))
-      
-      setUser(usuarioLogueado)
-      return usuarioLogueado // Le pasamos el objeto 'user' limpio a la pantalla
+      localStorage.setItem('spa_token', data.token);
+      localStorage.setItem('spa_user', JSON.stringify(usuarioLogueado));
+
+      setUser(usuarioLogueado);
+      return usuarioLogueado;
     } catch (error) {
-      throw error
+      console.error("Login fallido:", error);
+      throw error;
     }
-  }
+  };
 
-  // Función para cerrar sesión
   const logoutUser = () => {
-    localStorage.removeItem('spa_token')
-    localStorage.removeItem('spa_user')
-    setUser(null)
-  }
+    // Limpieza profunda
+    localStorage.removeItem('spa_token');
+    localStorage.removeItem('spa_user');
+    localStorage.clear(); 
+    
+    setUser(null);
+    
+    // Forzamos la redirección para limpiar el estado de la memoria del navegador
+    window.location.href = '/login';
+  };
 
   return (
     <AuthContext.Provider value={{ user, loading, loginUser, logoutUser }}>
       {children}
     </AuthContext.Provider>
-  )
-}
+  );
+};
 
-// 3. Hook personalizado para usar el contexto de forma fácil en cualquier archivo
-export const useAuth = () => useContext(AuthContext)
+export const useAuth = () => useContext(AuthContext);

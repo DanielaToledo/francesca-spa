@@ -4,7 +4,7 @@
 
 import { useState, useEffect } from 'react';
 import { format, addMinutes, parse } from 'date-fns';
-import api from '../../services/Api';
+import api from '../../services/api'; // Asegúrate que el archivo sea api.js (minúsculas)
 import { X, Loader2, CalendarX2 } from 'lucide-react';
 
 export default function SelectorHorarios({ fecha, id_especialista, configuracion, onActualizar }) {
@@ -45,8 +45,8 @@ export default function SelectorHorarios({ fecha, id_especialista, configuracion
     const cargarDatos = async () => {
         if (!id_especialista || !fecha) return;
         try {
+            // Usamos 'api' que ya tiene el interceptor de seguridad
             const { data: bRes } = await api.get(`/bloqueos/${id_especialista}`);
-            // Filtramos los bloqueos desde la fuente para que el estado solo tenga los del día
             const bloqueosDelDia = (bRes.data || []).filter(b => b.fecha_inicio.startsWith(fechaStr));
             setHorariosOcupados(bloqueosDelDia);
 
@@ -66,36 +66,35 @@ export default function SelectorHorarios({ fecha, id_especialista, configuracion
         setHorasSeleccionadas(prev => prev.includes(hora) ? prev.filter(h => h !== hora) : [...prev, hora]);
     };
 
-   const handleConfirmarBloqueo = async () => {
-    setLoading(true);
-    try {
-        const intervalo = configDia.intervalo || 60;
-        await Promise.all(horasSeleccionadas.map(async (hora) => {
-            // CAMBIO: Quitamos la 'T' y la 'Z' para evitar que JS intente convertir zonas horarias
-            const inicio = `${fechaStr} ${hora}:00`; 
-            
-            const [h, m] = hora.split(':').map(Number);
-            const total = (h * 60) + m + intervalo;
-            const fin = `${fechaStr} ${Math.floor(total / 60).toString().padStart(2, '0')}:${(total % 60).toString().padStart(2, '0')}:00`;
+    const handleConfirmarBloqueo = async () => {
+        setLoading(true);
+        try {
+            const intervalo = configDia.intervalo || 60;
+            await Promise.all(horasSeleccionadas.map(async (hora) => {
+                const inicio = `${fechaStr} ${hora}:00`; 
+                
+                const [h, m] = hora.split(':').map(Number);
+                const total = (h * 60) + m + intervalo;
+                const fin = `${fechaStr} ${Math.floor(total / 60).toString().padStart(2, '0')}:${(total % 60).toString().padStart(2, '0')}:00`;
 
-            return api.post('/bloqueos', { 
-                id_especialista, 
-                fecha_inicio: inicio, 
-                fecha_fin: fin, 
-                motivo: "Bloqueo manual" 
-            });
-        }));
+                return api.post('/bloqueos', { 
+                    id_especialista, 
+                    fecha_inicio: inicio, 
+                    fecha_fin: fin, 
+                    motivo: "Bloqueo manual" 
+                });
+            }));
 
-        await cargarDatos();
-        setHorasSeleccionadas([]);
-        setShowConfirm(false);
-        if (onActualizar) onActualizar();
-    } catch (error) {
-        setErrorMsg("Error al guardar.");
-    } finally {
-        setLoading(false);
-    }
-}; 
+            await cargarDatos();
+            setHorasSeleccionadas([]);
+            setShowConfirm(false);
+            if (onActualizar) onActualizar();
+        } catch (error) {
+            setErrorMsg("Error al guardar los bloqueos.");
+        } finally {
+            setLoading(false);
+        }
+    };
 
     const handleDesbloquear = async (id_bloqueo) => {
         setLoading(true);
@@ -110,7 +109,7 @@ export default function SelectorHorarios({ fecha, id_especialista, configuracion
         }
     };
 
-  return (
+    return (
         <div className="bg-white p-6 rounded-2xl shadow-sm border border-[#A87379]/10">
             {errorMsg && (
                 <div className="mb-4 p-3 bg-red-50 border border-red-200 text-red-600 text-sm rounded-lg flex justify-between items-center">
@@ -129,10 +128,7 @@ export default function SelectorHorarios({ fecha, id_especialista, configuracion
             ) : (
                 <div className="grid grid-cols-3 gap-3">
                     {horasDisponibles.map((hora) => {
-                        // Buscamos el bloqueo comparando la hora exacta extraída del string de la BD
-                        // Usamos substring(11, 16) para obtener "HH:mm" de "YYYY-MM-DD HH:mm:ss"
                         const bloqueo = horariosOcupados.find(b => b.fecha_inicio.substring(11, 16) === hora);
-                        
                         return (
                             <button
                                 key={hora}

@@ -1,34 +1,35 @@
-import axios from 'axios';
+// src/services/especialistaService.js
+import api from './api'; 
 
-// Configuración base para axios
-const api = axios.create({
-  baseURL: 'http://localhost:3000/api', 
-});
-
-// Interceptor para incluir el token si lo necesitas
-api.interceptors.request.use((config) => {
-  const token = localStorage.getItem('token');
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
-  }
-  return config;
-});
-
+/**
+ * Servicio para gestionar la configuración de los especialistas.
+ * La configuración del token (interceptor) ya está definida en 'api.js'.
+ */
 export const especialistaService = {
-  // Obtener configuración (GET /api/especialistas/:id_especialista/configuracion)
+  
+  // Obtener configuración del especialista
   getConfig: async (id_especialista) => {
-    const response = await api.get(`/especialistas/${id_especialista}/configuracion`);
-    return response.data;
+    try {
+      const response = await api.get(`/especialistas/${id_especialista}/configuracion`);
+      return response.data;
+    } catch (error) {
+      console.error("Error al obtener la configuración:", error);
+      throw error;
+    }
   },
 
-  // Guardar configuración (PUT /api/especialistas/:id_especialista/configuracion)
-  // Se cambió la clave a 'configuracion_agenda' para coincidir con el backend
-  // En tu especialistaService.js
-updateConfig: async (id_especialista, data) => {
-    return await api.put(`/especialistas/${id_especialista}/configuracion`, data, {
+  // Actualizar configuración del especialista
+  updateConfig: async (id_especialista, data) => {
+    try {
+      const response = await api.put(`/especialistas/${id_especialista}/configuracion`, data, {
         headers: {
-            'Content-Type': 'application/json'
+          'Content-Type': 'application/json'
         }
-    });
-},
+      });
+      return response.data;
+    } catch (error) {
+      console.error("Error al actualizar la configuración:", error);
+      throw error;
+    }
+  },
 };

@@ -12,14 +12,13 @@ import { useState, useEffect, useCallback } from 'react';
 import Calendar from 'react-calendar';
 import 'react-calendar/dist/Calendar.css';
 import { format } from 'date-fns';
-import axios from 'axios';
+import API from '../../services/api'; // Importamos tu instancia configurada
 import SelectorHorarios from '../../components/especialistas/SelectorHorarios';
 import { useAuth } from '../../context/AuthContext';
 import { especialistaService } from '../../services/especialistaService';
 
 // Componente de Resumen lateral
 const ResumenBloqueos = ({ bloqueos, onDesbloquear }) => {
-    // Usamos string para comparar sin zonas horarias
     const hoy = format(new Date(), 'yyyy-MM-dd');
     
     const proximos = (bloqueos || [])
@@ -36,7 +35,6 @@ const ResumenBloqueos = ({ bloqueos, onDesbloquear }) => {
                 {proximos.map((b, index) => (
                     <div key={index} className="flex items-center justify-between p-3 bg-slate-50 rounded-lg border border-slate-100">
                         <div>
-                            {/* CORRECCIÓN: Formato directo de string */}
                             <p className="text-sm font-bold text-slate-700">
                                 {b.fecha.split('-').reverse().join('/')}
                             </p>
@@ -68,7 +66,6 @@ export default function Disponibilidad() {
         const mapa = {};
         if (Array.isArray(listaBloqueos)) {
             listaBloqueos.forEach(b => {
-                // Usamos substring para no depender de objetos Date
                 const fecha = b.fecha_inicio.substring(0, 10);
                 mapa[fecha] = (mapa[fecha] || 0) + 1;
             });
@@ -79,7 +76,8 @@ export default function Disponibilidad() {
     const cargarAgendaCompleta = useCallback(async () => {
         if (!idEspecialista) return;
         try {
-            const res = await axios.get(`/api/turnos/agenda/resumen/${idEspecialista}`);
+            // Usamos API en lugar de axios para incluir el token automáticamente
+            const res = await API.get(`/turnos/agenda/resumen/${idEspecialista}`);
             const data = res.data.data;
             
             setListaBloqueosGlobal(data.bloqueos || []);
@@ -99,7 +97,8 @@ export default function Disponibilidad() {
             const bloqueoManual = listaBloqueosGlobal.find(b => b.fecha_inicio.startsWith(fecha));
 
             if (bloqueoManual && bloqueoManual.id_bloqueo) {
-                await axios.delete(`/api/bloqueos/${bloqueoManual.id_bloqueo}`);
+                // Usamos API en lugar de axios
+                await API.delete(`/bloqueos/${bloqueoManual.id_bloqueo}`);
             } else {
                 const nuevaConfig = { ...configuracion };
                 if (nuevaConfig.bloqueos) {
