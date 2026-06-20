@@ -19,8 +19,9 @@ import { especialistaService } from '../../services/especialistaService';
 
 // Componente de Resumen lateral
 const ResumenBloqueos = ({ bloqueos, onDesbloquear }) => {
+    // Usamos string para comparar sin zonas horarias
     const hoy = format(new Date(), 'yyyy-MM-dd');
-    // Filtramos para mostrar los bloqueos futuros
+    
     const proximos = (bloqueos || [])
         .filter(b => b.fecha >= hoy)
         .sort((a, b) => a.fecha.localeCompare(b.fecha))
@@ -35,7 +36,10 @@ const ResumenBloqueos = ({ bloqueos, onDesbloquear }) => {
                 {proximos.map((b, index) => (
                     <div key={index} className="flex items-center justify-between p-3 bg-slate-50 rounded-lg border border-slate-100">
                         <div>
-                            <p className="text-sm font-bold text-slate-700">{format(new Date(b.fecha), 'dd/MM/yyyy')}</p>
+                            {/* CORRECCIÓN: Formato directo de string */}
+                            <p className="text-sm font-bold text-slate-700">
+                                {b.fecha.split('-').reverse().join('/')}
+                            </p>
                             <p className="text-xs text-slate-500">{b.motivo || 'Bloqueo manual'}</p>
                         </div>
                         <button 
@@ -56,7 +60,7 @@ export default function Disponibilidad() {
     const [fechaSeleccionada, setFechaSeleccionada] = useState(new Date());
     const [diasBloqueados, setDiasBloqueados] = useState({});
     const [configuracion, setConfiguracion] = useState(null);
-    const [listaBloqueosGlobal, setListaBloqueosGlobal] = useState([]); // Necesario para obtener el ID de borrado
+    const [listaBloqueosGlobal, setListaBloqueosGlobal] = useState([]);
 
     const idEspecialista = user?.id_especialista;
 
@@ -64,6 +68,7 @@ export default function Disponibilidad() {
         const mapa = {};
         if (Array.isArray(listaBloqueos)) {
             listaBloqueos.forEach(b => {
+                // Usamos substring para no depender de objetos Date
                 const fecha = b.fecha_inicio.substring(0, 10);
                 mapa[fecha] = (mapa[fecha] || 0) + 1;
             });
@@ -90,34 +95,23 @@ export default function Disponibilidad() {
     }, [cargarAgendaCompleta]);
 
     const handleDesbloquearDesdeResumen = async (fecha) => {
-    try {
-        // 1. Intentar buscar si es un bloqueo manual en la tabla de bloqueos (tiene id_bloqueo)
-        const bloqueoManual = listaBloqueosGlobal.find(b => b.fecha_inicio.startsWith(fecha));
+        try {
+            const bloqueoManual = listaBloqueosGlobal.find(b => b.fecha_inicio.startsWith(fecha));
 
-        if (bloqueoManual && bloqueoManual.id_bloqueo) {
-            // Usamos tu instancia de axios 'api' o tu servicio de bloqueos
-            await axios.delete(`/api/bloqueos/${bloqueoManual.id_bloqueo}`);
-        } else {
-            // 2. Si es un bloqueo de CONFIGURACIÓN (día completo)
-            // Clonamos el objeto de configuración actual
-            const nuevaConfig = { ...configuracion };
-            
-            // Filtramos para eliminar el día bloqueado del array
-            if (nuevaConfig.bloqueos) {
-                nuevaConfig.bloqueos = nuevaConfig.bloqueos.filter(b => b.fecha !== fecha);
+            if (bloqueoManual && bloqueoManual.id_bloqueo) {
+                await axios.delete(`/api/bloqueos/${bloqueoManual.id_bloqueo}`);
+            } else {
+                const nuevaConfig = { ...configuracion };
+                if (nuevaConfig.bloqueos) {
+                    nuevaConfig.bloqueos = nuevaConfig.bloqueos.filter(b => b.fecha !== fecha);
+                }
+                await especialistaService.updateConfig(idEspecialista, nuevaConfig);
             }
-            
-            // Usamos tu servicio que ya tiene la URL correcta configurada
-            await especialistaService.updateConfig(idEspecialista, nuevaConfig);
+            await cargarAgendaCompleta();
+        } catch (error) {
+            alert("Hubo un error al intentar eliminar el bloqueo.");
         }
-        
-        // Refrescamos la vista
-        await cargarAgendaCompleta();
-    } catch (error) {
-        console.error("Error al desbloquear:", error);
-        alert("Hubo un error al intentar eliminar el bloqueo.");
-    }
-};
+    };
 
     const tileClassName = ({ date, view }) => {
         if (view === 'month') {

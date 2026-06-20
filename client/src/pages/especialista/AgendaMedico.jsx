@@ -29,19 +29,18 @@ export default function AgendaMedico() {
                 setLoading(true)
                 setError(null)
 
-                // Cargamos ambos datos en paralelo para eficiencia
                 const [resTurnos, resConfig] = await Promise.all([
                     turnoService.getTurnosEspecialista(idParaConsultar),
                     especialistaService.getConfig(idParaConsultar)
                 ]);
 
                 if (resTurnos.success) {
-                    // Actualizamos la configuración que usará el resto de la app
                     setConfig(resConfig?.data?.configuracion_agenda || null); 
 
+                    // CORRECCIÓN: Filtramos usando el string sin crear objetos Date
                     const turnosFiltrados = resTurnos.data.filter(turno => {
                         if (!turno.fecha_hora) return false;
-                        const fechaTurno = new Date(turno.fecha_hora).toISOString().split('T')[0];
+                        const fechaTurno = turno.fecha_hora.substring(0, 10);
                         return fechaTurno === filtroFecha;
                     });
                     setTurnos(turnosFiltrados);
@@ -59,12 +58,11 @@ export default function AgendaMedico() {
         if (user) cargarDatosAgenda();
     }, [user, filtroFecha]);
 
+    // CORRECCIÓN: Formateo de hora sin convertir a objeto Date
     const formatHora = (fechaHoraString) => {
-        try {
-            const fecha = new Date(fechaHoraString);
-            return fecha.getUTCHours().toString().padStart(2, '0') + ':' + 
-                   fecha.getUTCMinutes().toString().padStart(2, '0');
-        } catch { return '00:00' }
+        if (!fechaHoraString) return '00:00';
+        // Extraemos el string "HH:mm" directamente de "YYYY-MM-DD HH:mm:ss"
+        return fechaHoraString.substring(11, 16);
     }
 
     const getEstadoBadge = (id_estado) => {

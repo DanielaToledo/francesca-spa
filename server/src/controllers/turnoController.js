@@ -55,46 +55,39 @@ export const turnoController = {
 createTurno: async (req, res) => {
     try {
         const id_especialista = Number(req.body.id_especialista);
-        const { fecha_hora } = req.body;
+        let { fecha_hora } = req.body; // Ejemplo: "2026-07-08T10:00"
 
-        // Convertimos la fecha del POST a un timestamp numérico
-        const t = new Date(fecha_hora).getTime();
+        // ¡ESTO ES LO IMPORTANTE!
+        // Convertimos el formato ISO a formato simple "YYYY-MM-DD HH:mm:ss"
+        // Esto le dice a la base de datos: "No conviertas nada, guarda esto tal cual"
+        const fechaLimpia = fecha_hora.replace('T', ' ');
 
+        // Verificación de bloqueos (usando la fecha limpia)
         const bloqueos = await BloqueoAgendaModel.getBloqueos(id_especialista);
-        
-        // Verificación de bloqueo: si el turno cae dentro de un rango, bloqueamos
         const estaBloqueado = bloqueos.some(bloqueo => {
-            const start = new Date(bloqueo.fecha_inicio).getTime();
-            const end = new Date(bloqueo.fecha_fin).getTime();
-            
-            return t >= start && t < end;
+            const inicio = bloqueo.fecha_inicio.substring(0, 16);
+            const fin = bloqueo.fecha_fin.substring(0, 16);
+            return fechaLimpia.substring(0, 16) >= inicio && fechaLimpia.substring(0, 16) < fin;
         });
 
         if (estaBloqueado) {
-            return res.status(409).json({ 
-                success: false, 
-                message: 'No se puede agendar: este horario está bloqueado por el especialista.' 
-            });
+            return res.status(409).json({ success: false, message: 'Horario bloqueado.' });
         }
 
-        const nuevoTurno = await TurnoModel.create(req.body);
-        
-        return res.status(201).json({ 
-            success: true, 
-            message: 'Turno agendado con éxito', 
-            data: nuevoTurno 
+        // Crear turno enviando la fecha limpia
+        const nuevoTurno = await TurnoModel.create({
+            ...req.body,
+            fecha_hora: fechaLimpia // Se guarda sin la "T"
         });
-
+        
+        return res.status(201).json({ success: true, data: nuevoTurno });
     } catch (error) {
-        if (error.code === '23505') {
-            return res.status(409).json({ 
-                success: false, 
-                message: 'Este horario ya ha sido ocupado.' 
-            });
-        }
         return res.status(500).json({ success: false, message: error.message });
     }
 },
+
+
+
     cambiarEstado: async (req, res) => {
         const { id } = req.params // ID del turno
         const { id_estado_turno } = req.body // Nuevo estado (2, 3 o 4)
