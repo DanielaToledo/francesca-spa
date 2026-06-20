@@ -76,16 +76,18 @@ createWithServices: async (especialistaData, serviciosIds) => {
     }
 },
   // Nueva función para actualizar la configuración
-  updateConfiguracion: async (id_especialista, configuracion) => {
+ // En tu models/especialistaModel.js
+updateConfiguracion: async (id_especialista, configuracion) => {
     const query = `
       UPDATE especialista 
       SET configuracion_agenda = $1 
       WHERE id_especialista = $2
       RETURNING configuracion_agenda;
     `;
+    // Nota: El pool.query automáticamente maneja el JSON si le pasas un objeto o string
     const { rows } = await pool.query(query, [JSON.stringify(configuracion), id_especialista]);
     return rows[0];
-  },
+},
 
   // En models/especialistaModel.js
 update: async (id_usuario, data) => {

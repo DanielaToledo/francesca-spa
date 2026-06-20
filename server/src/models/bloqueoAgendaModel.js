@@ -27,12 +27,22 @@ export const BloqueoAgendaModel = {
     },
 
     // 3. Obtener bloqueos de un especialista para pintarlos en el calendario
-    getBloqueos: async (id_especialista) => {
-        const query = `SELECT * FROM bloqueo_agenda WHERE id_especialista = $1`;
-        const { rows } = await pool.query(query, [id_especialista]);
-        return rows;
-    },
-
+   // En BloqueoAgendaModel.js
+getBloqueos: async (id_especialista) => {
+    // Al usar 'AT TIME ZONE', forzamos a que PostgreSQL devuelva 
+    // la hora tal cual está guardada, sin aplicar desplazamientos de UTC.
+    const query = `
+        SELECT id_bloqueo, 
+               id_especialista, 
+               fecha_inicio::text, 
+               fecha_fin::text, 
+               motivo 
+        FROM bloqueo_agenda 
+        WHERE id_especialista = $1
+    `;
+    const { rows } = await pool.query(query, [id_especialista]);
+    return rows;
+},
     // 4. Eliminar un bloqueo por su ID
     eliminarBloqueo: async (id_bloqueo) => {
     const query = `DELETE FROM bloqueo_agenda WHERE id_bloqueo = $1`;

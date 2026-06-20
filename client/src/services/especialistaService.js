@@ -1,11 +1,11 @@
 import axios from 'axios';
 
-// Configuración base para axios (asegúrate de que el puerto 3000 sea el de tu backend)
+// Configuración base para axios
 const api = axios.create({
   baseURL: 'http://localhost:3000/api', 
 });
 
-// Interceptor para incluir el token si lo necesitas (opcional, si usas AuthContext)
+// Interceptor para incluir el token si lo necesitas
 api.interceptors.request.use((config) => {
   const token = localStorage.getItem('token');
   if (token) {
@@ -22,10 +22,13 @@ export const especialistaService = {
   },
 
   // Guardar configuración (PUT /api/especialistas/:id_especialista/configuracion)
-  updateConfig: async (id_especialista, configuracion) => {
-    const response = await api.put(`/especialistas/${id_especialista}/configuracion`, { 
-      configuracion 
+  // Se cambió la clave a 'configuracion_agenda' para coincidir con el backend
+  // En tu especialistaService.js
+updateConfig: async (id_especialista, data) => {
+    return await api.put(`/especialistas/${id_especialista}/configuracion`, data, {
+        headers: {
+            'Content-Type': 'application/json'
+        }
     });
-    return response.data;
-  }
+},
 };

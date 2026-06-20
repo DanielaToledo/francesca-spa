@@ -1,166 +1,188 @@
-import { useState, useEffect } from 'react';
-import { format } from 'date-fns';
-import api from '../../services/Api';
-import { HelpCircle, CheckCircle2, X, Loader2, Trash2 } from 'lucide-react';
 
-export default function SelectorHorarios({ fecha, id_especialista }) {
-    const horasDisponibles = ["09:00", "10:00", "11:00", "12:00", "15:00", "16:00", "17:00"];
+// este componente es el encargado de mostrar los horarios disponibles para un día seleccionado,
+// y de permitir bloquear o desbloquear horas específicas. También muestra los turnos agendados para ese día. Recibe la fecha, el id del especialista y la configuración de horarios como props.
+
+import { useState, useEffect } from 'react';
+import { format, addMinutes, parse } from 'date-fns';
+import api from '../../services/Api';
+import { X, Loader2, CalendarX2 } from 'lucide-react';
+
+export default function SelectorHorarios({ fecha, id_especialista, configuracion, onActualizar }) {
     const [horariosOcupados, setHorariosOcupados] = useState([]);
     const [horasSeleccionadas, setHorasSeleccionadas] = useState([]);
     const [loading, setLoading] = useState(false);
     const [turnosDelDia, setTurnosDelDia] = useState([]);
-
-    // Estados para Modales
     const [showConfirm, setShowConfirm] = useState(false);
-    const [statusModal, setStatusModal] = useState({ show: false, type: '', message: '' });
-    
-    // Estado para saber qué horario estamos intentando desbloquear
-    const [idBloqueoADesbloquear, setIdBloqueoADesbloquear] = useState(null);
+    const [errorMsg, setErrorMsg] = useState(null);
+
+    const diaIngles = format(fecha, 'EEEE').toLowerCase();
+    const mapaDias = {
+        monday: 'lunes', tuesday: 'martes', wednesday: 'miercoles', thursday: 'jueves',
+        friday: 'viernes', saturday: 'sabado', sunday: 'domingo'
+    };
+    const nombreDia = mapaDias[diaIngles] || diaIngles;
+    const configDia = configuracion?.horarios?.[nombreDia] || null;
+    const fechaStr = format(fecha, 'yyyy-MM-dd');
+
+    const esDiaBloqueado = configuracion?.bloqueos?.some(b => b.fecha === fechaStr);
+
+    const generarHoras = () => {
+        if (esDiaBloqueado || !configDia || !configDia.inicio || !configDia.fin) return [];
+        const { inicio, fin, intervalo } = configDia;
+        let lista = [];
+        let actual = parse(inicio, 'HH:mm', new Date(2000, 0, 1));
+        const limite = parse(fin, 'HH:mm', new Date(2000, 0, 1));
+
+        while (actual < limite) {
+            lista.push(format(actual, 'HH:mm'));
+            actual = addMinutes(actual, intervalo);
+        }
+        return lista;
+    };
+
+    const horasDisponibles = generarHoras();
+
+    const cargarDatos = async () => {
+        if (!id_especialista || !fecha) return;
+        try {
+            const { data: bRes } = await api.get(`/bloqueos/${id_especialista}`);
+            // Filtramos los bloqueos desde la fuente para que el estado solo tenga los del día
+            const bloqueosDelDia = (bRes.data || []).filter(b => b.fecha_inicio.startsWith(fechaStr));
+            setHorariosOcupados(bloqueosDelDia);
+
+            const { data: tData } = await api.get(`/turnos/agenda/resumen/${id_especialista}`);
+            const todosLosTurnos = tData.data.turnos || [];
+            const turnosFiltrados = todosLosTurnos.filter(turno => turno.fecha_hora.startsWith(fechaStr));
+            setTurnosDelDia(turnosFiltrados);
+        } catch (error) {
+            console.error("Error al cargar datos:", error);
+            setErrorMsg("No se pudieron cargar los datos.");
+        }
+    };
+
+    useEffect(() => { cargarDatos(); }, [fecha, id_especialista]);
 
     const toggleHora = (hora) => {
-        setHorasSeleccionadas(prev =>
-            prev.includes(hora) ? prev.filter(h => h !== hora) : [...prev, hora]
-        );
+        setHorasSeleccionadas(prev => prev.includes(hora) ? prev.filter(h => h !== hora) : [...prev, hora]);
     };
 
-    const cargarBloqueos = async () => {
-        try {
-            if (!id_especialista) return;
-            const { data } = await api.get(`/bloqueos/${id_especialista}`);
-            const fechaStr = format(fecha, 'yyyy-MM-dd');
-            const bloqueosDia = data.data
-                .filter(b => b.fecha_inicio.startsWith(fechaStr))
-                .map(b => ({ hora: format(new Date(b.fecha_inicio), 'HH:mm'), id_bloqueo: b.id_bloqueo }));
-            setHorariosOcupados(bloqueosDia);
-        } catch (error) { console.error("Error al cargar bloqueos:", error); }
-    };
+   const handleConfirmarBloqueo = async () => {
+    setLoading(true);
+    try {
+        const intervalo = configDia.intervalo || 60;
+        await Promise.all(horasSeleccionadas.map(async (hora) => {
+            // CAMBIO: Quitamos la 'T' y la 'Z' para evitar que JS intente convertir zonas horarias
+            const inicio = `${fechaStr} ${hora}:00`; 
+            
+            const [h, m] = hora.split(':').map(Number);
+            const total = (h * 60) + m + intervalo;
+            const fin = `${fechaStr} ${Math.floor(total / 60).toString().padStart(2, '0')}:${(total % 60).toString().padStart(2, '0')}:00`;
 
-    const cargarResumenAgenda = async () => {
-        try {
-            if (!id_especialista) return;
-            const fechaStr = format(fecha, 'yyyy-MM-dd');
-            const { data } = await api.get(`/turnos/agenda/resumen/${id_especialista}?fecha=${fechaStr}`);
-            setTurnosDelDia(data.data.turnos);
-        } catch (error) { console.error("Error al traer el resumen:", error); }
-    };
+            return api.post('/bloqueos', { 
+                id_especialista, 
+                fecha_inicio: inicio, 
+                fecha_fin: fin, 
+                motivo: "Bloqueo manual" 
+            });
+        }));
 
-    useEffect(() => { cargarBloqueos(); cargarResumenAgenda(); }, [fecha, id_especialista]);
+        await cargarDatos();
+        setHorasSeleccionadas([]);
+        setShowConfirm(false);
+        if (onActualizar) onActualizar();
+    } catch (error) {
+        setErrorMsg("Error al guardar.");
+    } finally {
+        setLoading(false);
+    }
+}; 
 
-    // LÓGICA DE BLOQUEO
-    const handleConfirmarBloqueo = async () => {
-        setLoading(true);
-        try {
-            const fechaStr = format(fecha, 'yyyy-MM-dd');
-            for (const hora of horasSeleccionadas) {
-                await api.post('/bloqueos', { id_especialista, fecha_inicio: `${fechaStr} ${hora}:00`, fecha_fin: `${fechaStr} ${parseInt(hora) + 1}:00`, motivo: "Bloqueo manual" });
-            }
-            setShowConfirm(false);
-            setStatusModal({ show: true, type: 'success', message: '¡Horarios bloqueados con éxito!' });
-            setHorasSeleccionadas([]);
-            cargarBloqueos();
-        } catch (error) {
-            setShowConfirm(false);
-            setStatusModal({ show: true, type: 'error', message: 'Error: ' + (error.response?.data?.message || 'No se pudieron bloquear.') });
-        } finally { setLoading(false); }
-    };
-
-    // LÓGICA DE DESBLOQUEO (RECUPERADA)
     const handleDesbloquear = async (id_bloqueo) => {
         setLoading(true);
         try {
             await api.delete(`/bloqueos/${id_bloqueo}`);
-            setStatusModal({ show: true, type: 'success', message: '¡Horario liberado con éxito!' });
-            cargarBloqueos();
+            await cargarDatos();
+            if (onActualizar) onActualizar();
         } catch (error) {
-            setStatusModal({ show: true, type: 'error', message: 'No se pudo desbloquear el horario.' });
+            setErrorMsg("Error al eliminar el bloqueo.");
         } finally {
             setLoading(false);
-            setIdBloqueoADesbloquear(null);
         }
     };
 
-    const closeAllModals = () => { setShowConfirm(false); setStatusModal({ show: false, type: '', message: '' }); setIdBloqueoADesbloquear(null); };
-
-    return (
+  return (
         <div className="bg-white p-6 rounded-2xl shadow-sm border border-[#A87379]/10">
-            {/* MODALES */}
-            {showConfirm && (
-                <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/30 backdrop-blur-sm p-4">
-                    <div className="bg-white rounded-2xl p-6 w-full max-w-sm shadow-2xl swal-animation">
-                        <div className="flex items-center gap-3 mb-4 text-[#A87379]">
-                            <HelpCircle size={24} />
-                            <h3 className="text-xl font-bold">Confirmar Bloqueo</h3>
-                        </div>
-                        <p className="text-sm text-slate-600 mb-6 bg-slate-50 p-4 rounded-lg">¿Estás seguro de bloquear {horasSeleccionadas.length} horarios?</p>
-                        <div className="flex gap-3">
-                            <button onClick={() => setShowConfirm(false)} className="flex-1 py-2.5 rounded-lg bg-slate-100 text-slate-600 font-bold text-sm">Cancelar</button>
-                            <button onClick={handleConfirmarBloqueo} disabled={loading} className="flex-1 py-2.5 rounded-lg bg-[#A87379] text-white font-bold text-sm flex justify-center items-center gap-2">
-                                {loading ? <Loader2 className="animate-spin" size={16} /> : 'Confirmar'}
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            )}
-
-            {statusModal.show && (
-                <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/30 backdrop-blur-sm p-4" onClick={closeAllModals}>
-                    <div className="bg-white rounded-3xl p-8 w-full max-w-sm shadow-2xl swal-animation flex flex-col items-center text-center" onClick={e => e.stopPropagation()}>
-                        <div className={statusModal.type === 'success' ? "bg-[#E8F5E9] text-[#2E7D32] p-5 rounded-full mb-6" : "bg-red-50 text-red-600 p-5 rounded-full mb-6"}>
-                            {statusModal.type === 'success' ? <CheckCircle2 size={50} /> : <X size={50} />}
-                        </div>
-                        <h3 className={`text-3xl font-extrabold mb-3 ${statusModal.type === 'success' ? 'text-[#2E7D32]' : 'text-red-600'}`}>
-                            {statusModal.type === 'success' ? '¡Éxito!' : 'Error'}
-                        </h3>
-                        <p className="text-slate-700 mb-8">{statusModal.message}</p>
-                        <button onClick={closeAllModals} className={`w-full py-3.5 rounded-xl text-white font-bold ${statusModal.type === 'success' ? 'bg-[#2E7D32]' : 'bg-red-600'}`}>Aceptar</button>
-                    </div>
+            {errorMsg && (
+                <div className="mb-4 p-3 bg-red-50 border border-red-200 text-red-600 text-sm rounded-lg flex justify-between items-center">
+                    <span>{errorMsg}</span>
+                    <button onClick={() => setErrorMsg(null)}><X size={16} /></button>
                 </div>
             )}
 
             <h3 className="text-lg font-bold text-[#A87379] mb-4">Horarios para {format(fecha, 'dd/MM/yyyy')}</h3>
-            
-            <div className="grid grid-cols-3 gap-3">
-                {horasDisponibles.map((hora) => {
-                    const ocupado = horariosOcupados.find(h => h.hora === hora);
-                    return (
-                        <button key={hora} 
-                            onClick={() => ocupado ? handleDesbloquear(ocupado.id_bloqueo) : toggleHora(hora)}
-                            className={`py-2 px-3 rounded-lg border text-sm transition flex flex-col items-center ${
-                                ocupado 
-                                ? 'bg-slate-100 border-slate-200 text-slate-400 hover:bg-red-50 hover:border-red-200 hover:text-red-500' 
-                                : horasSeleccionadas.includes(hora) 
-                                    ? 'bg-[#A87379] text-white border-[#A87379]' 
-                                    : 'bg-white border-[#A87379]/30 hover:border-[#A87379]'
-                            }`}>
-                            <span className="font-bold">{hora}</span>
-                            {ocupado && <span className="text-[9px] font-bold uppercase mt-1">Liberar</span>}
-                        </button>
-                    );
-                })}
-            </div>
-            
-            <button onClick={() => setShowConfirm(true)} disabled={horasSeleccionadas.length === 0 || loading}
-                className="mt-6 w-full py-3 bg-[#A87379] text-white font-bold rounded-lg hover:bg-[#96666b] transition">
-                Confirmar Bloqueos
-            </button>
 
-            {/* LISTA DE TURNOS */}
+            {esDiaBloqueado ? (
+                <div className="p-8 bg-red-50 border border-red-200 rounded-xl text-center flex flex-col items-center my-4">
+                    <CalendarX2 size={24} className="text-red-600 mb-3" />
+                    <p className="text-red-700 font-bold">Día bloqueado</p>
+                </div>
+            ) : (
+                <div className="grid grid-cols-3 gap-3">
+                    {horasDisponibles.map((hora) => {
+                        // Buscamos el bloqueo comparando la hora exacta extraída del string de la BD
+                        // Usamos substring(11, 16) para obtener "HH:mm" de "YYYY-MM-DD HH:mm:ss"
+                        const bloqueo = horariosOcupados.find(b => b.fecha_inicio.substring(11, 16) === hora);
+                        
+                        return (
+                            <button
+                                key={hora}
+                                onClick={() => bloqueo ? handleDesbloquear(bloqueo.id_bloqueo) : toggleHora(hora)}
+                                className={`py-2 px-3 rounded-lg border text-sm transition flex flex-col items-center ${
+                                    bloqueo 
+                                        ? 'bg-red-50 border-red-200 text-red-600'
+                                        : horasSeleccionadas.includes(hora) 
+                                            ? 'bg-[#A87379] text-white border-[#A87379]'
+                                            : 'bg-white border-[#A87379]/30 hover:border-[#A87379]'
+                                }`}
+                            >
+                                <span className="font-bold">{hora}</span>
+                            </button>
+                        );
+                    })}
+                </div>
+            )}
+
+            {!esDiaBloqueado && (
+                <button
+                    onClick={() => setShowConfirm(true)}
+                    disabled={horasSeleccionadas.length === 0 || loading}
+                    className="mt-6 w-full py-3 bg-[#A87379] text-white font-bold rounded-lg hover:bg-[#96666b] disabled:opacity-50 transition"
+                >
+                    {loading ? <Loader2 className="animate-spin" /> : 'Confirmar Bloqueos'}
+                </button>
+            )}
+
             <div className="mt-8 border-t pt-6">
                 <h4 className="font-bold text-slate-700 mb-3">Turnos agendados</h4>
-                {turnosDelDia.length > 0 ? (
-                    <div className="space-y-2">
-                        {turnosDelDia.map(turno => (
-                            <div key={turno.id_turno} className="flex items-center justify-between p-3 bg-blue-50 border border-blue-100 rounded-lg text-sm transition-all">
-                                <span className="font-bold text-blue-800">{format(new Date(turno.fecha_hora), 'HH:mm')}</span>
-                                <span className="text-slate-700 font-medium">{turno.cliente_nombre}</span>
-                                <span className="text-[10px] font-bold bg-blue-200 text-blue-800 px-2 py-1 rounded-full uppercase">{turno.nombre_estado}</span>
-                            </div>
-                        ))}
+                {turnosDelDia.length > 0 ? turnosDelDia.map(turno => (
+                    <div key={turno.id_turno} className="flex justify-between p-3 bg-blue-50 border border-blue-100 rounded-lg text-sm mb-2">
+                        <span className="font-bold text-blue-800">{turno.fecha_hora.substring(11, 16)}</span>
+                        <span className="text-slate-700">{turno.cliente_nombre}</span>
                     </div>
-                ) : (
-                    <p className="text-sm text-slate-400 italic text-center">No hay turnos para este día.</p>
-                )}
+                )) : <p className="text-sm text-slate-400 italic">No hay turnos agendados.</p>}
             </div>
+
+            {showConfirm && (
+                <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/30 p-4">
+                    <div className="bg-white rounded-2xl p-6 w-full max-w-sm">
+                        <h3 className="font-bold mb-4">¿Confirmar bloqueos?</h3>
+                        <div className="flex gap-2">
+                            <button onClick={() => setShowConfirm(false)} className="flex-1 py-2 bg-slate-100 rounded-lg">No</button>
+                            <button onClick={handleConfirmarBloqueo} className="flex-1 py-2 bg-[#A87379] text-white rounded-lg">Sí</button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

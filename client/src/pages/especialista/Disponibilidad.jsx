@@ -1,76 +1,139 @@
-//Disponibilidad (Disponibilidad.jsx): Es la Gestión de Excepciones. 
-// Es para el "día a día": "Este jueves tengo que salir a las 15:00 por un trámite" 
-// o "Voy a abrir el sábado de mañana solo por esta vez".
+//este archivo lo que hace es mostrar el calendario y el selector de horarios, es la vista principal de la agenda, desde aqui se cargan los datos y se pasan al selector
+// tambien se encarga de mostrar los días bloqueados en el calendario, y de cargar la configuración de horarios para cada día, que luego se pasa al selector para generar las horas dinámicamente
+// aca se crean los horarios base para cada día, en caso de que el backend no traiga la configuración, asi evitamos errores y mostramos algo por defecto
 
-import { useState, useEffect } from 'react';
+
+//Sincronización Total: Disponibilidad ahora le pasa la configuración "limpia" a SelectorHorarios.
+//Visualización: El calendario volverá a pintarse correctamente porque ahora configuracion siempre tiene la estructura horarios.{dia}.
+//Funcionamiento del Selector: Al recibir la configuracion como prop, SelectorHorarios dejará de estar "ciego" y podrá generar los bloques de tiempo (ej. 30min o 60min) que el especialista configuró.
+
+
+import { useState, useEffect, useCallback } from 'react';
 import Calendar from 'react-calendar';
 import 'react-calendar/dist/Calendar.css';
 import { format } from 'date-fns';
-import axios from 'axios'; // Recuerda que prefieres AXIOS
+import axios from 'axios';
 import SelectorHorarios from '../../components/especialistas/SelectorHorarios';
 import { useAuth } from '../../context/AuthContext';
+import { especialistaService } from '../../services/especialistaService';
+
+// Componente de Resumen lateral
+const ResumenBloqueos = ({ bloqueos, onDesbloquear }) => {
+    const hoy = format(new Date(), 'yyyy-MM-dd');
+    // Filtramos para mostrar los bloqueos futuros
+    const proximos = (bloqueos || [])
+        .filter(b => b.fecha >= hoy)
+        .sort((a, b) => a.fecha.localeCompare(b.fecha))
+        .slice(0, 5);
+
+    if (proximos.length === 0) return null;
+
+    return (
+        <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 mt-6">
+            <h4 className="font-bold text-[#A87379] mb-4">Próximos días bloqueados</h4>
+            <div className="space-y-3">
+                {proximos.map((b, index) => (
+                    <div key={index} className="flex items-center justify-between p-3 bg-slate-50 rounded-lg border border-slate-100">
+                        <div>
+                            <p className="text-sm font-bold text-slate-700">{format(new Date(b.fecha), 'dd/MM/yyyy')}</p>
+                            <p className="text-xs text-slate-500">{b.motivo || 'Bloqueo manual'}</p>
+                        </div>
+                        <button 
+                            onClick={() => onDesbloquear(b.fecha)}
+                            className="text-xs text-red-600 font-bold hover:bg-red-100 px-2 py-1 rounded transition"
+                        >
+                            Desbloquear
+                        </button>
+                    </div>
+                ))}
+            </div>
+        </div>
+    );
+};
 
 export default function Disponibilidad() {
     const { user } = useAuth();
     const [fechaSeleccionada, setFechaSeleccionada] = useState(new Date());
     const [diasBloqueados, setDiasBloqueados] = useState({});
     const [configuracion, setConfiguracion] = useState(null);
+    const [listaBloqueosGlobal, setListaBloqueosGlobal] = useState([]); // Necesario para obtener el ID de borrado
 
     const idEspecialista = user?.id_especialista;
 
- useEffect(() => {
-    const cargarAgendaCompleta = async () => {
-        if (!idEspecialista) return;
+    const procesarBloqueos = useCallback((listaBloqueos) => {
+        const mapa = {};
+        if (Array.isArray(listaBloqueos)) {
+            listaBloqueos.forEach(b => {
+                const fecha = b.fecha_inicio.substring(0, 10);
+                mapa[fecha] = (mapa[fecha] || 0) + 1;
+            });
+        }
+        setDiasBloqueados(mapa);
+    }, []);
 
+    const cargarAgendaCompleta = useCallback(async () => {
+        if (!idEspecialista) return;
         try {
             const res = await axios.get(`/api/turnos/agenda/resumen/${idEspecialista}`);
+            const data = res.data.data;
             
-            // LOG DE DEPURACIÓN CRÍTICO
-            console.log("LOG ESTRUCTURA COMPLETA:", JSON.stringify(res.data, null, 2));
-
-            // Si res.data es un string (porque el backend devolvió un html), el JSON.stringify fallará
-            // Pero como vimos que devuelve JSON, busquemos dónde está el bloque "data"
-            const datos = res.data.data || res.data; 
-
-            if (!datos || typeof datos !== 'object') {
-                console.error("DEBUG: La estructura de res.data no es la esperada", res.data);
-                return;
-            }
-
-            // Procesar bloqueos
-            const bloqueos = datos.bloqueos || [];
-            const contadorDias = {};
-            
-            bloqueos.forEach(b => {
-                const fecha = b.fecha_inicio.split('T')[0];
-                contadorDias[fecha] = (contadorDias[fecha] || 0) + 1;
-            });
-
-            setDiasBloqueados(contadorDias);
-            setConfiguracion(datos);
-            console.log("¡Carga exitosa!");
-                
+            setListaBloqueosGlobal(data.bloqueos || []);
+            procesarBloqueos(data.bloqueos || []);
+            setConfiguracion(data.configuracion_agenda);
         } catch (err) {
-            console.error("Error al cargar en Disponibilidad:", err);
+            console.error("Error al cargar la agenda:", err);
         }
-    };
-    cargarAgendaCompleta();
-}, [idEspecialista]);
+    }, [idEspecialista, procesarBloqueos]);
+
+    useEffect(() => {
+        cargarAgendaCompleta();
+    }, [cargarAgendaCompleta]);
+
+    const handleDesbloquearDesdeResumen = async (fecha) => {
+    try {
+        // 1. Intentar buscar si es un bloqueo manual en la tabla de bloqueos (tiene id_bloqueo)
+        const bloqueoManual = listaBloqueosGlobal.find(b => b.fecha_inicio.startsWith(fecha));
+
+        if (bloqueoManual && bloqueoManual.id_bloqueo) {
+            // Usamos tu instancia de axios 'api' o tu servicio de bloqueos
+            await axios.delete(`/api/bloqueos/${bloqueoManual.id_bloqueo}`);
+        } else {
+            // 2. Si es un bloqueo de CONFIGURACIÓN (día completo)
+            // Clonamos el objeto de configuración actual
+            const nuevaConfig = { ...configuracion };
+            
+            // Filtramos para eliminar el día bloqueado del array
+            if (nuevaConfig.bloqueos) {
+                nuevaConfig.bloqueos = nuevaConfig.bloqueos.filter(b => b.fecha !== fecha);
+            }
+            
+            // Usamos tu servicio que ya tiene la URL correcta configurada
+            await especialistaService.updateConfig(idEspecialista, nuevaConfig);
+        }
+        
+        // Refrescamos la vista
+        await cargarAgendaCompleta();
+    } catch (error) {
+        console.error("Error al desbloquear:", error);
+        alert("Hubo un error al intentar eliminar el bloqueo.");
+    }
+};
 
     const tileClassName = ({ date, view }) => {
         if (view === 'month') {
             const fechaStr = format(date, 'yyyy-MM-dd');
-            const diaSemana = format(date, 'EEEE').toLowerCase(); // ej: 'sunday'
             const cantidadBloqueos = diasBloqueados[fechaStr] || 0;
+            const esBloqueoConfig = configuracion?.bloqueos?.some(b => b.fecha === fechaStr);
 
-            // Lógica de Pintado:
-            // 1. Si está bloqueado manualmente
-            if (cantidadBloqueos >= 6) return 'dia-bloqueado-rojo';
+            if (cantidadBloqueos >= 6 || esBloqueoConfig) return 'dia-bloqueado-rojo';
             if (cantidadBloqueos > 0) return 'dia-con-bloqueos-parciales';
 
-            // 2. Si es un día no laboral según configuración (ej: domingo 00:00-00:00)
-            if (configuracion && configuracion[diaSemana]?.inicio === "00:00") {
-                return 'dia-bloqueado-base'; // Necesitas crear este estilo en CSS
+            if (configuracion?.horarios) {
+                const mapaDias = { monday: 'lunes', tuesday: 'martes', wednesday: 'miercoles', thursday: 'jueves', friday: 'viernes', saturday: 'sabado', sunday: 'domingo' };
+                const diaSemanaEsp = mapaDias[format(date, 'EEEE').toLowerCase()];
+                const horario = configuracion.horarios[diaSemanaEsp];
+
+                if (!horario || horario.inicio === horario.fin) return 'dia-bloqueado-base';
             }
         }
         return null;
@@ -81,21 +144,28 @@ export default function Disponibilidad() {
     return (
         <div className="p-6 max-w-7xl mx-auto">
             <h2 className="text-2xl font-bold text-[#A87379] mb-6">Gestión de Agenda</h2>
-            
+
             <div className="grid grid-cols-1 lg:grid-cols-[1fr_450px] gap-8">
                 <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
-                    <Calendar 
-                        onChange={setFechaSeleccionada} 
-                        value={fechaSeleccionada} 
+                    <Calendar
+                        onChange={setFechaSeleccionada}
+                        value={fechaSeleccionada}
                         className="w-full !border-none"
                         tileClassName={tileClassName}
+                    />
+                    <ResumenBloqueos 
+                        bloqueos={configuracion?.bloqueos || []} 
+                        onDesbloquear={handleDesbloquearDesdeResumen} 
                     />
                 </div>
 
                 <div className="space-y-6">
-                    <SelectorHorarios 
-                        fecha={fechaSeleccionada} 
+                    <SelectorHorarios
+                        key={`sel-${format(fechaSeleccionada, 'yyyy-MM-dd')}-${JSON.stringify(configuracion)}`}
+                        fecha={fechaSeleccionada}
                         id_especialista={idEspecialista}
+                        configuracion={configuracion}
+                        onActualizar={cargarAgendaCompleta}
                     />
                 </div>
             </div>

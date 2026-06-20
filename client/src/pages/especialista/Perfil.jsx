@@ -3,53 +3,50 @@
 // no trabajo los feriados ni mi cumpleaños". 
 // Es lo que alimenta la base del calendario del cliente.
 
-
 import { useState, useEffect } from 'react';
 import { especialistaService } from '../../services/especialistaService';
 import ConfiguracionAgenda from '../../components/especialistas/ConfiguracionAgenda';
+import { useAuth } from '../../context/AuthContext';
 
 export default function Perfil() {
+    const { user } = useAuth();
     const [config, setConfig] = useState(null);
     const [loading, setLoading] = useState(false);
-    const id_especialista = 1; // Asegúrate de obtener esto del contexto de usuario
+    
+    const id_especialista = user?.id_especialista;
 
+    // 1. Lógica de carga única
     useEffect(() => {
+        if (!id_especialista) return;
+
         const cargarConfig = async () => {
             try {
                 const res = await especialistaService.getConfig(id_especialista);
-                console.log("Respuesta del backend:", res);
-
-                // Estructura por defecto si el backend devuelve data vacía
-                const estructuraPorDefecto = {
-                    lun_vie: { inicio: "09:00", fin: "18:00" },
-                    sabado: { inicio: "09:00", fin: "13:00" },
-                    domingo: { inicio: "00:00", fin: "00:00" }
+                const dataBackend = res.data?.configuracion_agenda;
+                
+                // Aseguramos estructura mínima incluso si viene vacío
+                const configDefault = { 
+                    horarios: {}, 
+                    bloqueos: [], 
+                    duracion_turno: 60 
                 };
-
-                // Si 'res.data' existe y tiene contenido, lo usamos, si no, usamos el defecto
-               const dataFinal = (res.data && res.data.configuracion_agenda) 
-    ? res.data.configuracion_agenda 
-    : estructuraPorDefecto;
-
-                setConfig(dataFinal);
+                
+                setConfig(dataBackend || configDefault);
             } catch (error) {
                 console.error("Error al cargar configuración:", error);
-                // Si falla el backend, cargamos al menos la estructura inicial para no romper el front
-                setConfig({
-                    lun_vie: { inicio: "09:00", fin: "18:00" },
-                    sabado: { inicio: "09:00", fin: "13:00" },
-                    domingo: { inicio: "00:00", fin: "00:00" }
-                });
+                setConfig({ horarios: {}, bloqueos: [], duracion_turno: 60 });
             }
         };
         cargarConfig();
-    }, []);
+    }, [id_especialista]);
 
+    // 2. Manejador de guardado que actualiza el estado padre
     const handleSave = async (nuevaConfig) => {
         setLoading(true);
         try {
             await especialistaService.updateConfig(id_especialista, nuevaConfig);
-            setConfig(nuevaConfig); // Actualizamos el estado local con lo nuevo
+            // Actualizamos el estado local para que la UI se refresque instantáneamente
+            setConfig(nuevaConfig); 
             alert('¡Configuración guardada correctamente!');
         } catch (error) {
             console.error("Error al guardar:", error);
@@ -59,13 +56,17 @@ export default function Perfil() {
         }
     };
 
-    // Esto evita que se intente renderizar el componente hijo sin datos
+    // 3. Validaciones de carga segura
+    if (!id_especialista) return <div className="p-8 text-center">Cargando datos de sesión...</div>;
     if (!config) return <div className="p-8 text-center">Cargando perfil...</div>;
 
+    // 4. Renderizado
     return (
         <div className="p-8 max-w-4xl mx-auto">
             <h1 className="text-3xl font-bold mb-8 text-[#A87379]">Mi Perfil</h1>
+            {/* El key={JSON.stringify} es vital para que el hijo se entere del cambio de estado */}
             <ConfiguracionAgenda 
+                key={JSON.stringify(config)} 
                 initialConfig={config} 
                 onSave={handleSave} 
                 loading={loading} 

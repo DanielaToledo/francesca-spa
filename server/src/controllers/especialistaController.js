@@ -56,16 +56,18 @@ createEspecialista: async (req, res) => {
 getConfiguracion: async (req, res) => {
     const { id_especialista } = req.params;
     try {
+        // Forzamos una consulta fresca al modelo
         const especialista = await EspecialistaModel.getById(id_especialista);
         
-        if (!especialista) {
-            return res.status(404).json({ success: false, message: 'Especialista no encontrado' });
-        }
+        if (!especialista) return res.status(404).json({ message: 'No encontrado' });
 
-        // Ahora 'especialista.configuracion_agenda' vendrá con los datos que vimos en tu captura
-        const config = especialista.configuracion_agenda || {}; 
-        
-        return res.status(200).json({ success: true, data: config });
+        // Verificamos qué tiene realmente en la BD
+        console.log("Configuración leída de la BD:", especialista.configuracion_agenda);
+
+        return res.status(200).json({ 
+            success: true, 
+            data: { configuracion_agenda: especialista.configuracion_agenda } 
+        });
     } catch (error) {
         return res.status(500).json({ success: false, message: error.message });
     }
@@ -73,16 +75,46 @@ getConfiguracion: async (req, res) => {
 
 
 
-  updateConfiguracion: async (req, res) => {
+// En tu controllers/especialistaController.js
+// En tu controllers/especialistaController.js
+updateConfiguracion: async (req, res) => {
     const { id_especialista } = req.params;
-    const { configuracion } = req.body; // El objeto JSON completo
+    
+    // Si el frontend envía el objeto plano (como vimos en tu console.log), 
+    // req.body es exactamente lo que queremos.
+    const configuracion = req.body; 
+    console.log("Recibido en backend:", configuracion);
+    
+
     try {
-      const updated = await EspecialistaModel.updateConfiguracion(id_especialista, configuracion);
-      return res.status(200).json({ success: true, data: updated });
-    } catch (error) {
-      return res.status(500).json({ success: false, message: error.message });
+        // ¿Es esta la línea que falla?
+        if (!configuracion || !configuracion.horarios) {
+            console.log("Validación falló: no hay horarios");
+            return res.status(400).json({ success: false, message: "Formato de configuración inválido" });
+        }
+
+        // --- SOLUCIÓN: Asegurar que se guarde como un objeto JSON puro ---
+        // A veces, dependiendo de cómo esté configurado tu pool, 
+        // es más seguro pasarle el objeto directo.
+        const configuracionActualizada = await EspecialistaModel.updateConfiguracion(
+            id_especialista, 
+            configuracion // Esto es el objeto { horarios, ... }
+        );
+
+        return res.status(200).json({ 
+            success: true, 
+            message: "Configuración actualizada correctamente", 
+            data: configuracionActualizada 
+        });
+    } catch (err) {
+        console.error("Error en updateConfiguracion:", err);
+        return res.status(500).json({ 
+            success: false, 
+            message: "Error interno al guardar la configuración",
+            error: err.message 
+        });
     }
-  },
+},
 
 updateEspecialidad: async (req, res) => {
     const { id_especialista } = req.params;

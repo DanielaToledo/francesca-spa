@@ -50,18 +50,23 @@
     background: #fef08a !important; /* Amarillo suave */
 }
 
+/* Día totalmente bloqueado */
 .dia-bloqueado-rojo {
     background-color: #A87379 !important; 
     color: white !important;
-    border-radius: 50% !important;
+    border-radius: 0px !important; /* Cambiado de 50% a 0px para que sea cuadrado */
 }
 
+/* Día con bloqueos parciales */
 .dia-con-bloqueos-parciales {
     background-color: #3b82f6 !important;
     color: white !important;
-    border-radius: 50% !important;
+    border-radius: 0px !important; /* Cambiado de 50% a 0px */
 }
+
+/* Día no disponible por configuración */
 .dia-bloqueado-base {
-    background-color: #f1f5f9 !important; /* Gris claro */
+    background-color: #f1f5f9 !important;
     color: #94a3b8 !important;
+    border-radius: 0px !important; /* Aseguramos que también sea cuadrado */
 }

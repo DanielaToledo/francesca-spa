@@ -159,6 +159,12 @@ createTurno: async (req, res) => {
     }
 },
 
+
+//Actualmente, el backend hace esto en getResumenAgenda:
+//Consulta tres fuentes: TurnoModel, BloqueoAgendaModel y EspecialistaModel.
+//Extrae la configuración: especialista?.configuracion_agenda.
+//La "desempaqueta": Si viene como string (a veces pasa con JSONB de Postgres), la intenta convertir a objeto (JSON.parse).
+//La retorna: La envía junto a los turnos y bloqueos en el mismo JSON.
 getResumenAgenda: async (req, res) => {
     const { id_especialista } = req.params;
     try {
@@ -168,24 +174,28 @@ getResumenAgenda: async (req, res) => {
             EspecialistaModel.getById(id_especialista)
         ]);
 
+        // AGREGAMOS ESTE LOG PARA VER LA VERDAD
+        console.log("ESPECIALISTA LEÍDO DE DB:", JSON.stringify(especialista, null, 2));
+
         let config = especialista?.configuracion_agenda || {};
-        // Aseguramos que sea objeto
+        
         if (typeof config === 'string') {
             try { config = JSON.parse(config); } catch(e) { config = {}; }
         }
 
-        // FUERZA LA ESTRUCTURA AQUÍ
+        console.log("CONFIG FINAL A ENVIAR:", JSON.stringify(config, null, 2));
+
         return res.status(200).json({ 
             success: true, 
             data: { 
-                bloqueos: bloqueos || [], // SIEMPRE envía un array, aunque esté vacío
+                bloqueos: bloqueos || [], 
                 turnos: turnos || [],
-                ...config
+                configuracion_agenda: config 
             } 
         });
     } catch (error) {
+        console.error("ERROR EN RESUMEN:", error);
         return res.status(500).json({ success: false, message: 'Error' });
     }
 },
-
 }

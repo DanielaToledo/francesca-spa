@@ -2,18 +2,37 @@ import { useState } from 'react';
 import { Save, Loader2, Plus, Trash2, Calendar } from 'lucide-react';
 
 export default function ConfiguracionAgenda({ initialConfig, onSave, loading }) {
-    // Inicializamos el estado asegurando que exista la propiedad 'bloqueos'
-    const [config, setConfig] = useState({
-        ...initialConfig,
-        bloqueos: initialConfig.bloqueos || []
+    // Estado inicial seguro
+    const [config, setConfig] = useState(() => {
+        const baseHorarios = {
+            lunes: { inicio: "09:00", fin: "18:00", intervalo: 60 },
+            martes: { inicio: "09:00", fin: "18:00", intervalo: 60 },
+            miercoles: { inicio: "09:00", fin: "18:00", intervalo: 60 },
+            jueves: { inicio: "09:00", fin: "18:00", intervalo: 60 },
+            viernes: { inicio: "09:00", fin: "18:00", intervalo: 60 },
+            sabado: { inicio: "09:00", fin: "13:00", intervalo: 60 },
+            domingo: { inicio: "09:00", fin: "13:00", intervalo: 60 }
+        };
+
+        return {
+            horarios: initialConfig?.horarios || baseHorarios,
+            bloqueos: initialConfig?.bloqueos || [],
+            duracion_turno: initialConfig?.duracion_turno || 60
+        };
     });
-    
+
     const [nuevoBloqueo, setNuevoBloqueo] = useState({ fecha: '', motivo: '' });
 
-    const handleChange = (dia, campo, valor) => {
+    const handleChangeHorario = (dia, campo, valor) => {
         setConfig(prev => ({
             ...prev,
-            [dia]: { ...prev[dia], [campo]: valor }
+            horarios: {
+                ...prev.horarios,
+                [dia]: { 
+                    ...prev.horarios[dia],
+                    [campo]: valor 
+                }
+            }
         }));
     };
 
@@ -38,20 +57,42 @@ export default function ConfiguracionAgenda({ initialConfig, onSave, loading }) 
             
             {/* Sección Horarios */}
             <div>
-                <h3 className="text-lg font-bold text-slate-700 mb-4">Horarios de Atención</h3>
-                {['lun_vie', 'sabado', 'domingo'].map((dia) => (
-                    <div key={dia} className="grid grid-cols-1 md:grid-cols-2 gap-4 items-center border-b border-slate-50 py-3">
-                        <label className="font-bold text-slate-600 capitalize">{dia.replace('_', ' a ')}</label>
-                        <div className="flex gap-2">
-                            <input type="time" value={config[dia].inicio} onChange={(e) => handleChange(dia, 'inicio', e.target.value)} className="p-2 border rounded-lg w-full" />
-                            <span className="self-center">a</span>
-                            <input type="time" value={config[dia].fin} onChange={(e) => handleChange(dia, 'fin', e.target.value)} className="p-2 border rounded-lg w-full" />
+                <h3 className="text-lg font-bold text-slate-700 mb-4">Horarios e Intervalos por día</h3>
+                {Object.keys(config.horarios).map((dia) => (
+                    <div key={dia} className="grid grid-cols-1 md:grid-cols-4 gap-4 items-center border-b border-slate-50 py-3">
+                        <label className="font-bold text-slate-600 capitalize">{dia}</label>
+                        
+                        <div className="flex gap-1 md:col-span-2 items-center">
+                            <input 
+                                type="time" 
+                                value={config.horarios[dia].inicio} 
+                                onChange={(e) => handleChangeHorario(dia, 'inicio', e.target.value)} 
+                                className="p-2 border rounded-lg w-full" 
+                            />
+                            <span>a</span>
+                            <input 
+                                type="time" 
+                                value={config.horarios[dia].fin} 
+                                onChange={(e) => handleChangeHorario(dia, 'fin', e.target.value)} 
+                                className="p-2 border rounded-lg w-full" 
+                            />
                         </div>
+
+                        <select 
+                            value={config.horarios[dia].intervalo} 
+                            onChange={(e) => handleChangeHorario(dia, 'intervalo', parseInt(e.target.value))}
+                            className="p-2 border rounded-lg w-full text-sm"
+                        >
+                            <option value={30}>30m</option>
+                            <option value={45}>45m</option>
+                            <option value={60}>60m</option>
+                            <option value={90}>90m</option>
+                        </select>
                     </div>
                 ))}
             </div>
 
-            {/* Sección Fechas Bloqueadas */}
+            {/* Sección Bloqueos */}
             <div>
                 <h3 className="text-lg font-bold text-slate-700 mb-4 flex items-center gap-2">
                     <Calendar size={18} /> Fechas Inhabilitadas
@@ -59,7 +100,7 @@ export default function ConfiguracionAgenda({ initialConfig, onSave, loading }) 
                 
                 <div className="flex gap-2 mb-4">
                     <input type="date" value={nuevoBloqueo.fecha} onChange={(e) => setNuevoBloqueo({...nuevoBloqueo, fecha: e.target.value})} className="p-2 border rounded-lg flex-1 text-sm" />
-                    <input type="text" placeholder="Motivo (ej. Cumpleaños)" value={nuevoBloqueo.motivo} onChange={(e) => setNuevoBloqueo({...nuevoBloqueo, motivo: e.target.value})} className="p-2 border rounded-lg flex-1 text-sm" />
+                    <input type="text" placeholder="Motivo" value={nuevoBloqueo.motivo} onChange={(e) => setNuevoBloqueo({...nuevoBloqueo, motivo: e.target.value})} className="p-2 border rounded-lg flex-1 text-sm" />
                     <button onClick={agregarBloqueo} className="bg-slate-100 p-2 rounded-lg hover:bg-slate-200"><Plus size={20} /></button>
                 </div>
 

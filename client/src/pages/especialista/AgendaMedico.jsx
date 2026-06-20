@@ -7,6 +7,7 @@ import { useState, useEffect } from 'react'
 import { useAuth } from '../../context/AuthContext'
 import { useNavigate } from 'react-router-dom'
 import { turnoService } from '../../services/turnoService'
+import { especialistaService } from '../../services/especialistaService'
 import { ESTADOS_TURNO } from "../../constants/estadoTurno";
 
 export default function AgendaMedico() {
@@ -14,12 +15,13 @@ export default function AgendaMedico() {
     const navigate = useNavigate()
 
     const [turnos, setTurnos] = useState([])
+    const [config, setConfig] = useState(null)
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState(null)
     const [filtroFecha, setFiltroFecha] = useState(new Date().toISOString().split('T')[0])
 
     useEffect(() => {
-        const obtenerTurnosEspecialista = async () => {
+        const cargarDatosAgenda = async () => {
             const idParaConsultar = user?.id_especialista || user?.id_usuario;
             if (!idParaConsultar) return;
 
@@ -27,61 +29,50 @@ export default function AgendaMedico() {
                 setLoading(true)
                 setError(null)
 
-                const res = await turnoService.getTurnosEspecialista(idParaConsultar)
+                // Cargamos ambos datos en paralelo para eficiencia
+                const [resTurnos, resConfig] = await Promise.all([
+                    turnoService.getTurnosEspecialista(idParaConsultar),
+                    especialistaService.getConfig(idParaConsultar)
+                ]);
 
-                if (res.success) {
-                    // Mantenemos este log para depuración, si ves que llegan los datos aquí, ¡es un gol!
+                if (resTurnos.success) {
+                    // Actualizamos la configuración que usará el resto de la app
+                    setConfig(resConfig?.data?.configuracion_agenda || null); 
 
-                    console.log("Datos recibidos del servidor:", JSON.stringify(res.data, null, 2));
-
-                    // MEJORA: Comparación más robusta de fechas
-                    const turnosFiltrados = res.data.filter(turno => {
+                    const turnosFiltrados = resTurnos.data.filter(turno => {
                         if (!turno.fecha_hora) return false;
                         const fechaTurno = new Date(turno.fecha_hora).toISOString().split('T')[0];
                         return fechaTurno === filtroFecha;
                     });
-
-                    setTurnos(turnosFiltrados)
+                    setTurnos(turnosFiltrados);
                 } else {
-                    setError('No se pudieron obtener los turnos.')
+                    setError('No se pudieron obtener los datos de la agenda.');
                 }
             } catch (err) {
-                console.error("Error al cargar la agenda:", err)
-                setError('No se pudo cargar la agenda real del día.')
+                console.error("Error al cargar datos:", err);
+                setError('No se pudo cargar la agenda.');
             } finally {
-                setLoading(false)
+                setLoading(false);
             }
         }
 
-        if (user) {
-            obtenerTurnosEspecialista()
-        }
-    }, [user, filtroFecha])
+        if (user) cargarDatosAgenda();
+    }, [user, filtroFecha]);
 
     const formatHora = (fechaHoraString) => {
         try {
-            // Creamos un objeto fecha a partir del string
             const fecha = new Date(fechaHoraString);
-
-            // Usamos UTC para obtener las horas y minutos EXACTOS que están en la base de datos
-            const horas = fecha.getUTCHours().toString().padStart(2, '0');
-            const minutos = fecha.getUTCMinutes().toString().padStart(2, '0');
-
-            return `${horas}:${minutos}`;
-        } catch {
-            return '00:00'
-        }
+            return fecha.getUTCHours().toString().padStart(2, '0') + ':' + 
+                   fecha.getUTCMinutes().toString().padStart(2, '0');
+        } catch { return '00:00' }
     }
 
     const getEstadoBadge = (id_estado) => {
-        // Convertimos a número para asegurar la comparación
         const id = parseInt(id_estado);
-
         if (id === ESTADOS_TURNO.REALIZADO) return 'bg-[#A87379]/10 text-[#A87379] border-[#A87379]/20';
         if (id === ESTADOS_TURNO.PENDIENTE) return 'bg-amber-50 text-amber-700 border-amber-200';
         if (id === ESTADOS_TURNO.CANCELADO) return 'bg-red-50 text-red-700 border-red-200';
         if (id === ESTADOS_TURNO.AUSENTE) return 'bg-slate-100 text-slate-600 border-slate-200';
-
         return 'bg-slate-50 text-slate-600 border-slate-200';
     };
 
@@ -115,13 +106,11 @@ export default function AgendaMedico() {
                 </div>
 
                 {loading ? (
-                    <div className="p-12 text-center text-slate-500 text-sm font-medium">Cargando agenda...</div>
+                    <div className="p-12 text-center text-slate-500">Cargando agenda...</div>
                 ) : error ? (
-                    <div className="p-12 text-center text-red-500 text-sm font-medium">{error}</div>
+                    <div className="p-12 text-center text-red-500">{error}</div>
                 ) : turnos.length === 0 ? (
-                    <div className="p-12 text-center text-slate-400 text-sm">
-                        No tenés turnos para esta fecha ({filtroFecha}).
-                    </div>
+                    <div className="p-12 text-center text-slate-400">No hay turnos para {filtroFecha}.</div>
                 ) : (
                     <div className="overflow-x-auto">
                         <table className="w-full text-left border-collapse">
@@ -141,17 +130,14 @@ export default function AgendaMedico() {
                                         <td className="p-4 font-semibold text-slate-800">{turno.cliente_nombre}</td>
                                         <td className="p-4 text-slate-600 font-medium">{turno.nombre_servicio}</td>
                                         <td className="p-4 text-center">
-                                            
-                                            <span className={`... ${getEstadoBadge(turno.id_estado_turno)}`}>
+                                            <span className={`px-2 py-1 rounded-full text-xs font-bold border ${getEstadoBadge(turno.id_estado_turno)}`}>
                                                 {turno.nombre_estado || 'Pendiente'}
                                             </span>
                                         </td>
                                         <td className="p-4 text-center">
                                             <button
-                                                onClick={() => navigate(`/especialista/ficha/${turno.id_cliente}`, {
-                                                    state: { id_turno: turno.id_turno } // <--- ¡AQUÍ ESTÁ EL SECRETO!
-                                                })}
-                                                className="px-3 py-1.5 text-xs font-bold text-[#A87379] bg-[#F4CFCC]/40 hover:bg-[#F4CFCC]/70 border border-[#F4CFCC]/60 rounded-lg transition-all"
+                                                onClick={() => navigate(`/especialista/ficha/${turno.id_cliente}`, { state: { id_turno: turno.id_turno } })}
+                                                className="px-3 py-1.5 text-xs font-bold text-[#A87379] bg-[#F4CFCC]/40 hover:bg-[#F4CFCC]/70 rounded-lg transition-all"
                                             >
                                                 📝 Ver Ficha
                                             </button>
