@@ -58,7 +58,7 @@ export default function Login() {
         <div className="min-h-screen bg-[#FBF9F8] flex items-center justify-center p-4">
             <div className="bg-white p-8 rounded-2xl shadow-xl w-full max-w-md border border-[#F4CFCC]/40">
                 
-                <h2 className="text-3xl font-bold text-[#A87379] text-center mb-2">¡Hola otra vez! 💆‍♀️</h2>
+                <h2 className="text-3xl font-bold text-[#A87379] text-center mb-2">¡Hola otra vez! </h2>
                 <p className="text-sm text-slate-500 text-center mb-6">Ingresa tus datos para gestionar el Spa</p>
 
                 {error && (
