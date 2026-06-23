@@ -1,35 +1,8 @@
-import { useState, useEffect } from 'react';
-import API from '../../services/api'; // Asegúrate de que esta ruta sea correcta
+import { hookUseDashboard } from '../../hooks/hookUseDashboard';
 import { Calendar, Users, DollarSign, Loader2 } from 'lucide-react';
 
 export default function Dashboard() {
-    const [stats, setStats] = useState({
-        citasHoy: 0,
-        personalActivo: 0,
-        ingresosDia: 0
-    });
-    const [loading, setLoading] = useState(true);
-
-    useEffect(() => {
-        const fetchDashboardData = async () => {
-            try {
-                // Aquí usamos AXIOS para traer tus datos
-                // const response = await API.get('/dashboard/stats');
-                // setStats(response.data);
-                
-                // Simulación de carga mientras conectas tus endpoints
-                setTimeout(() => {
-                    setStats({ citasHoy: 12, personalActivo: 8, ingresosDia: 145000 });
-                    setLoading(false);
-                }, 800);
-            } catch (error) {
-                console.error("Error al cargar métricas:", error);
-                setLoading(false);
-            }
-        };
-
-        fetchDashboardData();
-    }, []);
+    const { stats, loading } = hookUseDashboard();
 
     if (loading) return (
         <div className="flex h-96 items-center justify-center">
@@ -39,29 +12,15 @@ export default function Dashboard() {
 
     return (
         <div className="p-2 md:p-6 space-y-8">
-            {/* Saludo */}
             <div>
                 <h1 className="text-3xl font-bold text-[#A87379]">Bienvenida, Daniela</h1>
-                <p className="text-slate-500">Aquí tienes el resumen de la actividad del Spa hoy.</p>
+                <p className="text-slate-500">Resumen de la actividad del Spa.</p>
             </div>
             
-            {/* Tarjetas de Métricas */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <StatCard 
-                    title="Citas Hoy" 
-                    value={stats.citasHoy} 
-                    icon={<Calendar className="text-[#A87379]" size={24} />} 
-                />
-                <StatCard 
-                    title="Personal Activo" 
-                    value={stats.personalActivo} 
-                    icon={<Users className="text-[#A87379]" size={24} />} 
-                />
-                <StatCard 
-                    title="Ingresos del Día" 
-                    value={`$${stats.ingresosDia.toLocaleString()}`} 
-                    icon={<DollarSign className="text-[#A87379]" size={24} />} 
-                />
+                <StatCard title="Citas Hoy" value={stats.citasHoy} icon={<Calendar size={24} />} />
+                <StatCard title="Personal Activo" value={stats.personalActivo} icon={<Users size={24} />} />
+                <StatCard title="Ingresos del Día" value={`$${stats.ingresosDia.toLocaleString()}`} icon={<DollarSign size={24} />} />
             </div>
 
             {/* Accesos Rápidos */}
@@ -80,7 +39,6 @@ export default function Dashboard() {
     );
 }
 
-// Sub-componente para las tarjetas
 function StatCard({ title, value, icon }) {
     return (
         <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex items-center justify-between">
@@ -88,7 +46,7 @@ function StatCard({ title, value, icon }) {
                 <p className="text-slate-400 text-sm font-medium">{title}</p>
                 <h2 className="text-3xl font-bold text-slate-800 mt-1">{value}</h2>
             </div>
-            <div className="p-3 bg-[#F4CFCC]/20 rounded-xl">
+            <div className="p-3 bg-[#F4CFCC]/20 rounded-xl text-[#A87379]">
                 {icon}
             </div>
         </div>

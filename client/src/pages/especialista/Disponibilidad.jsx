@@ -8,23 +8,17 @@
 //Funcionamiento del Selector: Al recibir la configuracion como prop, SelectorHorarios dejará de estar "ciego" y podrá generar los bloques de tiempo (ej. 30min o 60min) que el especialista configuró.
 
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState } from 'react';
 import Calendar from 'react-calendar';
 import 'react-calendar/dist/Calendar.css';
 import { format } from 'date-fns';
-import API from '../../services/api'; // Importamos tu instancia configurada
 import SelectorHorarios from '../../components/especialistas/SelectorHorarios';
 import { useAuth } from '../../context/AuthContext';
-import { especialistaService } from '../../services/especialistaService';
+import { hookUseDisponibilidad } from '../../hooks/hookUseDisponibilidad';
 
-// Componente de Resumen lateral
 const ResumenBloqueos = ({ bloqueos, onDesbloquear }) => {
     const hoy = format(new Date(), 'yyyy-MM-dd');
-    
-    const proximos = (bloqueos || [])
-        .filter(b => b.fecha >= hoy)
-        .sort((a, b) => a.fecha.localeCompare(b.fecha))
-        .slice(0, 5);
+    const proximos = (bloqueos || []).filter(b => b.fecha >= hoy).sort((a, b) => a.fecha.localeCompare(b.fecha)).slice(0, 5);
 
     if (proximos.length === 0) return null;
 
@@ -35,17 +29,10 @@ const ResumenBloqueos = ({ bloqueos, onDesbloquear }) => {
                 {proximos.map((b, index) => (
                     <div key={index} className="flex items-center justify-between p-3 bg-slate-50 rounded-lg border border-slate-100">
                         <div>
-                            <p className="text-sm font-bold text-slate-700">
-                                {b.fecha.split('-').reverse().join('/')}
-                            </p>
+                            <p className="text-sm font-bold text-slate-700">{b.fecha.split('-').reverse().join('/')}</p>
                             <p className="text-xs text-slate-500">{b.motivo || 'Bloqueo manual'}</p>
                         </div>
-                        <button 
-                            onClick={() => onDesbloquear(b.fecha)}
-                            className="text-xs text-red-600 font-bold hover:bg-red-100 px-2 py-1 rounded transition"
-                        >
-                            Desbloquear
-                        </button>
+                        <button onClick={() => onDesbloquear(b.fecha)} className="text-xs text-red-600 font-bold hover:bg-red-100 px-2 py-1 rounded transition">Desbloquear</button>
                     </div>
                 ))}
             </div>
@@ -56,61 +43,9 @@ const ResumenBloqueos = ({ bloqueos, onDesbloquear }) => {
 export default function Disponibilidad() {
     const { user } = useAuth();
     const [fechaSeleccionada, setFechaSeleccionada] = useState(new Date());
-    const [diasBloqueados, setDiasBloqueados] = useState({});
-    const [configuracion, setConfiguracion] = useState(null);
-    const [listaBloqueosGlobal, setListaBloqueosGlobal] = useState([]);
-
-    const idEspecialista = user?.id_especialista;
-
-    const procesarBloqueos = useCallback((listaBloqueos) => {
-        const mapa = {};
-        if (Array.isArray(listaBloqueos)) {
-            listaBloqueos.forEach(b => {
-                const fecha = b.fecha_inicio.substring(0, 10);
-                mapa[fecha] = (mapa[fecha] || 0) + 1;
-            });
-        }
-        setDiasBloqueados(mapa);
-    }, []);
-
-    const cargarAgendaCompleta = useCallback(async () => {
-        if (!idEspecialista) return;
-        try {
-            // Usamos API en lugar de axios para incluir el token automáticamente
-            const res = await API.get(`/turnos/agenda/resumen/${idEspecialista}`);
-            const data = res.data.data;
-            
-            setListaBloqueosGlobal(data.bloqueos || []);
-            procesarBloqueos(data.bloqueos || []);
-            setConfiguracion(data.configuracion_agenda);
-        } catch (err) {
-            console.error("Error al cargar la agenda:", err);
-        }
-    }, [idEspecialista, procesarBloqueos]);
-
-    useEffect(() => {
-        cargarAgendaCompleta();
-    }, [cargarAgendaCompleta]);
-
-    const handleDesbloquearDesdeResumen = async (fecha) => {
-        try {
-            const bloqueoManual = listaBloqueosGlobal.find(b => b.fecha_inicio.startsWith(fecha));
-
-            if (bloqueoManual && bloqueoManual.id_bloqueo) {
-                // Usamos API en lugar de axios
-                await API.delete(`/bloqueos/${bloqueoManual.id_bloqueo}`);
-            } else {
-                const nuevaConfig = { ...configuracion };
-                if (nuevaConfig.bloqueos) {
-                    nuevaConfig.bloqueos = nuevaConfig.bloqueos.filter(b => b.fecha !== fecha);
-                }
-                await especialistaService.updateConfig(idEspecialista, nuevaConfig);
-            }
-            await cargarAgendaCompleta();
-        } catch (error) {
-            alert("Hubo un error al intentar eliminar el bloqueo.");
-        }
-    };
+    
+    // Usamos nuestro nuevo hook
+    const { configuracion, diasBloqueados, cargarAgendaCompleta, desbloquearFecha } = hookUseDisponibilidad(user?.id_especialista);
 
     const tileClassName = ({ date, view }) => {
         if (view === 'month') {
@@ -125,38 +60,27 @@ export default function Disponibilidad() {
                 const mapaDias = { monday: 'lunes', tuesday: 'martes', wednesday: 'miercoles', thursday: 'jueves', friday: 'viernes', saturday: 'sabado', sunday: 'domingo' };
                 const diaSemanaEsp = mapaDias[format(date, 'EEEE').toLowerCase()];
                 const horario = configuracion.horarios[diaSemanaEsp];
-
                 if (!horario || horario.inicio === horario.fin) return 'dia-bloqueado-base';
             }
         }
         return null;
     };
 
-    if (!idEspecialista) return <p className="p-6 text-center">Cargando...</p>;
+    if (!user?.id_especialista) return <p className="p-6 text-center">Cargando...</p>;
 
     return (
         <div className="p-6 max-w-7xl mx-auto">
             <h2 className="text-2xl font-bold text-[#A87379] mb-6">Gestión de Agenda</h2>
-
             <div className="grid grid-cols-1 lg:grid-cols-[1fr_450px] gap-8">
                 <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
-                    <Calendar
-                        onChange={setFechaSeleccionada}
-                        value={fechaSeleccionada}
-                        className="w-full !border-none"
-                        tileClassName={tileClassName}
-                    />
-                    <ResumenBloqueos 
-                        bloqueos={configuracion?.bloqueos || []} 
-                        onDesbloquear={handleDesbloquearDesdeResumen} 
-                    />
+                    <Calendar onChange={setFechaSeleccionada} value={fechaSeleccionada} className="w-full !border-none" tileClassName={tileClassName} />
+                    <ResumenBloqueos bloqueos={configuracion?.bloqueos || []} onDesbloquear={desbloquearFecha} />
                 </div>
-
                 <div className="space-y-6">
                     <SelectorHorarios
                         key={`sel-${format(fechaSeleccionada, 'yyyy-MM-dd')}-${JSON.stringify(configuracion)}`}
                         fecha={fechaSeleccionada}
-                        id_especialista={idEspecialista}
+                        id_especialista={user.id_especialista}
                         configuracion={configuracion}
                         onActualizar={cargarAgendaCompleta}
                     />
