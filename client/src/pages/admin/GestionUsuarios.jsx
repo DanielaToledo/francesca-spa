@@ -1,25 +1,25 @@
 import { useState, useEffect } from 'react';
 import { hookUseGestionUsuarios } from '../../hooks/hookUseGestionUsuarios';
-import { UserPlus, Loader2, CheckCircle2, X } from 'lucide-react';
+import { UserPlus, Loader2, CheckCircle2, X, AlertCircle } from 'lucide-react';
 
 export default function GestionUsuarios() {
     const { usuarios, servicios, usuarioEditando, setUsuarioEditando, guardarUsuario, cambiarEstado, loading } = hookUseGestionUsuarios();
-    
+
     const [form, setForm] = useState({ nombre: '', apellido: '', dni: '', email: '', password: '', rol: 'Especialista', especialidad: 'General', serviciosIds: [] });
     const [showConfirm, setShowConfirm] = useState(false);
     const [statusModal, setStatusModal] = useState({ show: false, type: '', message: '' });
 
     useEffect(() => {
         if (usuarioEditando) {
-            setForm({ 
-                nombre: usuarioEditando.nombre || '', 
-                apellido: usuarioEditando.apellido || '', 
-                dni: usuarioEditando.dni || '', 
-                email: usuarioEditando.email || '', 
-                password: '', 
-                rol: usuarioEditando.nombre_rol || 'Especialista', 
-                especialidad: usuarioEditando.especialidad || 'General', 
-                serviciosIds: usuarioEditando.serviciosIds || [] 
+            setForm({
+                nombre: usuarioEditando.nombre || '',
+                apellido: usuarioEditando.apellido || '',
+                dni: usuarioEditando.dni || '',
+                email: usuarioEditando.email || '',
+                password: '', // Se deja vacío por defecto para no pisar la contraseña si no se quiere cambiar
+                rol: usuarioEditando.nombre_rol || 'Especialista',
+                especialidad: usuarioEditando.especialidad || 'General',
+                serviciosIds: usuarioEditando.serviciosIds || []
             });
         } else {
             setForm({ nombre: '', apellido: '', dni: '', email: '', password: '', rol: 'Especialista', especialidad: 'General', serviciosIds: [] });
@@ -27,11 +27,19 @@ export default function GestionUsuarios() {
     }, [usuarioEditando]);
 
     const handleGuardar = async () => {
+        // Armamos el objeto base de datos
         const datos = {
             ...form,
             id_rol: form.rol === 'Especialista' ? 3 : (form.rol === 'Recepcionista' ? 2 : 1),
             serviciosIds: form.rol === 'Especialista' ? form.serviciosIds : []
         };
+
+        // 🟢 VALIDACIÓN CLAVE: Si estamos editando y el campo password está vacío, 
+        // lo eliminamos del objeto para que el backend no modifique la contraseña actual.
+        if (usuarioEditando && (!form.password || form.password.trim() === '')) {
+            delete datos.password;
+        }
+
         try {
             await guardarUsuario(datos);
             setStatusModal({ show: true, type: 'success', message: `¡${form.nombre} guardado con éxito!` });
@@ -52,6 +60,7 @@ export default function GestionUsuarios() {
 
     return (
         <div className="p-6">
+            {/* Modal de Estado (Éxito / Error) */}
             {statusModal.show && (
                 <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/30 backdrop-blur-sm p-4" onClick={() => setStatusModal({ show: false })}>
                     <div className="bg-white rounded-3xl p-8 w-full max-w-sm shadow-2xl flex flex-col items-center text-center">
@@ -59,6 +68,33 @@ export default function GestionUsuarios() {
                         <h3 className="text-2xl font-bold mb-2">{statusModal.type === 'success' ? '¡Éxito!' : '¡Error!'}</h3>
                         <p className="mb-6 text-slate-600">{statusModal.message}</p>
                         <button onClick={() => setStatusModal({ show: false })} className="w-full py-3 bg-slate-800 text-white rounded-xl font-bold">Aceptar</button>
+                    </div>
+                </div>
+            )}
+
+            {/* MODAL DE CONFIRMACIÓN */}
+            {showConfirm && (
+                <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
+                    <div className="bg-white rounded-3xl p-8 w-full max-w-sm shadow-2xl flex flex-col items-center text-center animate-in fade-in zoom-in duration-200">
+                        <AlertCircle size={50} className="text-[#A87379] mb-4 animate-bounce" />
+                        <h3 className="text-2xl font-bold mb-2 text-slate-800">¿Estás seguro?</h3>
+                        <p className="mb-6 text-slate-600 text-sm">
+                            Estás a punto de {usuarioEditando ? 'actualizar los datos de' : 'registrar a'} <span className="font-semibold text-slate-800">{form.nombre} {form.apellido}</span>.
+                        </p>
+                        <div className="flex gap-3 w-full">
+                            <button
+                                onClick={() => setShowConfirm(false)}
+                                className="flex-1 py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-bold transition-all text-sm"
+                            >
+                                Cancelar
+                            </button>
+                            <button
+                                onClick={handleGuardar}
+                                className="flex-1 py-3 bg-[#A87379] hover:bg-[#96666b] text-white rounded-xl font-bold transition-all text-sm shadow-md"
+                            >
+                                Sí, confirmar
+                            </button>
+                        </div>
                     </div>
                 </div>
             )}
@@ -71,13 +107,26 @@ export default function GestionUsuarios() {
                 <div className="bg-[#FDECEB] p-6 rounded-2xl border border-[#A87379]/20 h-fit">
                     <h3 className="font-bold text-[#A87379] mb-4">{usuarioEditando ? 'Editar Personal' : 'Registrar Personal'}</h3>
                     <div className="space-y-3">
-                        <input className="w-full p-2.5 rounded-lg border border-[#A87379]/30" placeholder="Nombre" value={form.nombre} onChange={e => setForm({...form, nombre: e.target.value})} />
-                        <input className="w-full p-2.5 rounded-lg border border-[#A87379]/30" placeholder="Apellido" value={form.apellido} onChange={e => setForm({...form, apellido: e.target.value})} />
-                        <input className="w-full p-2.5 rounded-lg border border-[#A87379]/30" placeholder="DNI" value={form.dni} onChange={e => setForm({...form, dni: e.target.value})} />
-                        <input className="w-full p-2.5 rounded-lg border border-[#A87379]/30" placeholder="Email" value={form.email} onChange={e => setForm({...form, email: e.target.value})} />
-                        <input type="password" className="w-full p-2.5 rounded-lg border border-[#A87379]/30" placeholder="Contraseña" value={form.password} onChange={e => setForm({...form, password: e.target.value})} />
+                        <input className="w-full p-2.5 rounded-lg border border-[#A87379]/30 bg-white" placeholder="Nombre" value={form.nombre} onChange={e => setForm({ ...form, nombre: e.target.value })} />
+                        <input className="w-full p-2.5 rounded-lg border border-[#A87379]/30 bg-white" placeholder="Apellido" value={form.apellido} onChange={e => setForm({ ...form, apellido: e.target.value })} />
+                        <input className="w-full p-2.5 rounded-lg border border-[#A87379]/30 bg-white" placeholder="DNI" value={form.dni} onChange={e => setForm({ ...form, dni: e.target.value })} />
+                        <input className="w-full p-2.5 rounded-lg border border-[#A87379]/30 bg-white" placeholder="Email" value={form.email} onChange={e => setForm({ ...form, email: e.target.value })} />
                         
-                        <select className="w-full p-2.5 rounded-lg border border-[#A87379]/30" value={form.rol} onChange={e => setForm({...form, rol: e.target.value})}>
+                        {/* Campo de contraseña adaptado */}
+                        <div>
+                            <input 
+                                type="password" 
+                                className="w-full p-2.5 rounded-lg border border-[#A87379]/30 bg-white" 
+                                placeholder={usuarioEditando ? "Nueva contraseña (opcional)" : "Contraseña"} 
+                                value={form.password} 
+                                onChange={e => setForm({ ...form, password: e.target.value })} 
+                            />
+                            {usuarioEditando && (
+                                <p className="text-[11px] text-slate-500 mt-1 italic">Dejar en blanco si no deseas cambiar la contraseña.</p>
+                            )}
+                        </div>
+
+                        <select className="w-full p-2.5 rounded-lg border border-[#A87379]/30 bg-white" value={form.rol} onChange={e => setForm({ ...form, rol: e.target.value })}>
                             <option value="Especialista">Especialista</option>
                             <option value="Recepcionista">Recepcionista</option>
                             <option value="Administrador">Administrador</option>
@@ -85,7 +134,7 @@ export default function GestionUsuarios() {
 
                         {form.rol === 'Especialista' && (
                             <>
-                                <select className="w-full p-2.5 rounded-lg border border-[#A87379]/30" value={form.especialidad} onChange={e => setForm({...form, especialidad: e.target.value})}>
+                                <select className="w-full p-2.5 rounded-lg border border-[#A87379]/30 bg-white" value={form.especialidad} onChange={e => setForm({ ...form, especialidad: e.target.value })}>
                                     {['General', 'Masajista', 'Aromaterapista', 'Cosmiatra', 'Esteticista', 'Nails'].map(opt => <option key={opt} value={opt}>{opt}</option>)}
                                 </select>
                                 <div className="bg-white p-3 rounded-lg border h-32 overflow-y-auto text-sm">
@@ -98,7 +147,7 @@ export default function GestionUsuarios() {
                                 </div>
                             </>
                         )}
-                        <button onClick={() => setShowConfirm(true)} className="w-full bg-[#A87379] text-white py-3 rounded-lg font-bold hover:bg-[#96666b] transition-all">
+                        <button onClick={() => setShowConfirm(true)} className="w-full bg-[#A87379] text-white py-3 rounded-lg font-bold hover:bg-[#96666b] transition-all shadow-sm">
                             {usuarioEditando ? 'Guardar Cambios' : 'Registrar'}
                         </button>
                     </div>
@@ -117,12 +166,16 @@ export default function GestionUsuarios() {
                         <tbody className="divide-y">
                             {usuarios.map(u => (
                                 <tr key={u.id_usuario} className="hover:bg-slate-50">
-                                    <td className="py-4 font-semibold">{u.nombre} {u.apellido}</td>
+                                    <td className="py-4 font-semibold">
+                                        {`${u.nombre || ''} ${u.apellido || ''}`
+                                            .toLowerCase()
+                                            .replace(/(^\w{1})|(\s+\w{1})/g, l => l.toUpperCase())}
+                                    </td>
                                     <td className="py-4 text-xs">{u.nombre_rol}</td>
                                     <td className="py-4 text-xs font-bold">{u.activo ? "ACTIVO" : "INACTIVO"}</td>
                                     <td className="py-4 text-right">
-                                        <button onClick={() => setUsuarioEditando(u)} className="text-slate-400 mr-3 text-xs font-bold">Editar</button>
-                                        <button onClick={() => cambiarEstado(u.id_usuario, u.activo)} className={`text-xs font-bold ${u.activo ? "text-red-500" : "text-green-600"}`}>
+                                        <button onClick={() => setUsuarioEditando(u)} className="text-slate-400 mr-3 text-xs font-bold hover:text-slate-700">Editar</button>
+                                        <button onClick={() => cambiarEstado(u.id_usuario, u.activo)} className={`text-xs font-bold ${u.activo ? "text-red-500 hover:text-red-700" : "text-green-600 hover:text-green-700"}`}>
                                             {u.activo ? "Baja" : "Reactivar"}
                                         </button>
                                     </td>

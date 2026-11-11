@@ -52,27 +52,47 @@ createEspecialista: async (req, res) => {
     }
 },
 
-// Nuevos métodos para configuración de agenda
+getEspecialistasPorServicio: async (req, res) => {
+    const { id_servicio } = req.params;
+    try {
+      const especialistas = await EspecialistaModel.getByServicioId(id_servicio);
+      return res.status(200).json({ success: true, data: especialistas });
+    } catch (error) {
+      return res.status(500).json({ success: false, message: 'Error al obtener especialistas del servicio', error: error.message });
+    }
+  },
+
+
+// Método corregido para enviar la configuración limpia al frontend
 getConfiguracion: async (req, res) => {
     const { id_especialista } = req.params;
     try {
-        // Forzamos una consulta fresca al modelo
         const especialista = await EspecialistaModel.getById(id_especialista);
         
-        if (!especialista) return res.status(404).json({ message: 'No encontrado' });
+        if (!especialista) {
+            return res.status(404).json({ success: false, message: 'Especialista no encontrado' });
+        }
 
-        // Verificamos qué tiene realmente en la BD
-        console.log("Configuración leída de la BD:", especialista.configuracion_agenda);
+        // Si la columna JSONB viene como string en alguna circunstancia, la parseamos de forma segura
+        let configAgenda = especialista.configuracion_agenda;
+        if (typeof configAgenda === 'string') {
+            try {
+                configAgenda = JSON.parse(configAgenda);
+            } catch (e) {
+                configAgenda = {};
+            }
+        }
 
+        // 🌟 CORRECCIÓN CRUCIAL: Devolvemos directamente el objeto de configuración en data
         return res.status(200).json({ 
             success: true, 
-            data: { configuracion_agenda: especialista.configuracion_agenda } 
+            data: configAgenda || { horarios: {}, bloqueos: [], duracion_turno: 60 }
         });
     } catch (error) {
+        console.error("Error en getConfiguracion:", error);
         return res.status(500).json({ success: false, message: error.message });
     }
 },
-
 
 
 // En tu controllers/especialistaController.js

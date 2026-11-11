@@ -38,6 +38,24 @@ getById: async (id_especialista) => {
     return rows[0]
   },
 
+
+
+  // Obtener especialistas filtrados por id_servicio
+  getByServicioId: async (id_servicio) => {
+    const query = `
+      SELECT e.id_especialista, e.especialidad, u.nombre, u.apellido, u.email
+      FROM especialista e
+      INNER JOIN usuario u ON e.id_usuario = u.id_usuario
+      INNER JOIN especialista_servicio es ON e.id_especialista = es.id_especialista
+      WHERE es.id_servicio = $1 AND u.activo = true
+      ORDER BY u.nombre ASC;
+    `;
+    const { rows } = await pool.query(query, [id_servicio]);
+    return rows;
+  },
+
+
+  
   // Nuevo método en EspecialistaModel
   // En tu EspecialistaModel.js
 createWithServices: async (especialistaData, serviciosIds) => {
@@ -77,17 +95,18 @@ createWithServices: async (especialistaData, serviciosIds) => {
 },
   // Nueva función para actualizar la configuración
  // En tu models/especialistaModel.js
-updateConfiguracion: async (id_especialista, configuracion) => {
+// 🌟 Método corregido para guardar la configuración de la agenda en Supabase/PostgreSQL
+  updateConfiguracion: async (id_especialista, configuracion) => {
     const query = `
       UPDATE especialista 
       SET configuracion_agenda = $1 
       WHERE id_especialista = $2
       RETURNING configuracion_agenda;
     `;
-    // Nota: El pool.query automáticamente maneja el JSON si le pasas un objeto o string
-    const { rows } = await pool.query(query, [JSON.stringify(configuracion), id_especialista]);
+    // Pasamos el objeto 'configuracion' directamente; el driver de pg se encarga del jsonb
+    const { rows } = await pool.query(query, [configuracion, id_especialista]);
     return rows[0];
-},
+  },
 
   // En models/especialistaModel.js
 update: async (id_usuario, data) => {

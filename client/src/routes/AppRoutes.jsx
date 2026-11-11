@@ -10,6 +10,7 @@ import Spinner from '../components/common/Spinner'; // <-- Importamos tu spinner
 const Login = lazy(() => import('../pages/auth/Login'));
 const Register = lazy(() => import('../pages/auth/Register'));
 const DashboardCliente = lazy(() => import('../pages/cliente/DashboardCliente'));
+const ReservarTurno = lazy(() => import('../pages/cliente/ReservarTurno'));
 const AgendaGeneral = lazy(() => import('../pages/recepcion/AgendaGeneral'));
 const Dashboard = lazy(() => import('../pages/admin/Dashboard'));
 const GestionServicios = lazy(() => import('../pages/admin/GestionServicios'));
@@ -52,6 +53,7 @@ export default function AppRoutes() {
         <Route element={<ProtectedRoute allowedRoles={['Cliente']} />}>
           <Route element={<MainLayout />}>
             <Route path="/cliente/dashboard" element={<DashboardCliente />} />
+            <Route path="/cliente/reservar" element={<ReservarTurno />} />
           </Route>
         </Route>
 

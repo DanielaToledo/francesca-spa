@@ -4,6 +4,8 @@ import { especialistaController } from '../controllers/especialistaController.js
 const router = Router()
 
 router.get('/', especialistaController.getEspecialistas)
+
+router.get('/servicio/:id_servicio', especialistaController.getEspecialistasPorServicio) // obtner especialistas filtrados por id_servicio
 router.get('/:id', especialistaController.getEspecialistaById)
 router.post('/', especialistaController.createEspecialista)
 router.get('/:id_especialista/configuracion', especialistaController.getConfiguracion);

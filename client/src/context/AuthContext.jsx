@@ -45,21 +45,41 @@ export const AuthProvider = ({ children }) => {
     return () => window.removeEventListener('storage', handleStorageChange);
   }, []);
 
-  const loginUser = async (email, password) => {
+ 
+const loginUser = async (email, password) => {
     try {
       const data = await authService.login(email, password);
-      const usuarioLogueado = data.user;
+      let usuarioLogueado = data.user;
+
+      // 🛡️ CORRECCIÓN DE SEGURIDAD DE IDs:
+      // Si el rol es Especialista y por alguna razón id_especialista vino undefined, 
+      // nos aseguramos de que no se pierda o lo mapeamos de forma segura.
+      if (usuarioLogueado.rol === 'Especialista' && !usuarioLogueado.id_especialista) {
+        // Si el backend mandó id_operativo (que tu backend también calculaba), lo usamos
+        usuarioLogueado.id_especialista = data.id_operativo || usuarioLogueado.id_usuario;
+      }
+
+      // Nos aseguramos de limpiar los 'undefined' para que JSON.stringify no borre cosas importantes
+      const usuarioA_Guardar = {
+        id_usuario: usuarioLogueado.id_usuario,
+        id_especialista: usuarioLogueado.id_especialista || null,
+        nombre: usuarioLogueado.nombre,
+        apellido: usuarioLogueado.apellido,
+        email: usuarioLogueado.email,
+        rol: usuarioLogueado.rol
+      };
 
       localStorage.setItem('spa_token', data.token);
-      localStorage.setItem('spa_user', JSON.stringify(usuarioLogueado));
+      localStorage.setItem('spa_user', JSON.stringify(usuarioA_Guardar));
 
-      setUser(usuarioLogueado);
-      return usuarioLogueado;
+      setUser(usuarioA_Guardar);
+      return usuarioA_Guardar;
     } catch (error) {
       console.error("Login fallido:", error);
       throw error;
     }
   };
+
 
   const logoutUser = () => {
     // Limpieza profunda

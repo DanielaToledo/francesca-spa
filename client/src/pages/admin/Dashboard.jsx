@@ -1,3 +1,8 @@
+// este es la pagina del panel principal del administrador, donde se muestran las estadisticas del spa y accesos rapidos a funciones importantes
+// como las tarjetas de estadisticas, botones de acceso rapido a funciones importantes y un mensaje de bienvenida al administrador
+
+
+
 import { hookUseDashboard } from '../../hooks/hookUseDashboard';
 import { Calendar, Users, DollarSign, Loader2 } from 'lucide-react';
 

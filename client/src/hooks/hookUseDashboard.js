@@ -8,7 +8,6 @@ export function hookUseDashboard() {
     const cargarMetricas = async () => {
         try {
             setLoading(true);
-            // Aquí ya tienes tu instancia de AXIOS configurada en API
             const response = await API.get('/dashboard/stats');
             setStats(response.data);
         } catch (error) {

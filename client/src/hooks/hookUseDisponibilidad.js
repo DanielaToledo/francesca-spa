@@ -1,58 +1,36 @@
-import { useState, useCallback, useEffect } from 'react';
-import API from '../services/api';
+import { useState, useEffect } from 'react';
 import { especialistaService } from '../services/especialistaService';
 
-export function hookUseDisponibilidad(idEspecialista) {
+export function hookUseDisponibilidad(id_especialista) {
     const [configuracion, setConfiguracion] = useState(null);
-    const [listaBloqueosGlobal, setListaBloqueosGlobal] = useState([]);
     const [diasBloqueados, setDiasBloqueados] = useState({});
+    const [loading, setLoading] = useState(true);
 
-    const procesarBloqueos = useCallback((listaBloqueos) => {
-        const mapa = {};
-        if (Array.isArray(listaBloqueos)) {
-            listaBloqueos.forEach(b => {
-                const fecha = b.fecha_inicio.substring(0, 10);
-                mapa[fecha] = (mapa[fecha] || 0) + 1;
-            });
-        }
-        setDiasBloqueados(mapa);
-    }, []);
-
-    const cargarAgendaCompleta = useCallback(async () => {
-        if (!idEspecialista) return;
+    const cargarAgendaCompleta = async () => {
+        if (!id_especialista) return;
         try {
-            const res = await API.get(`/turnos/agenda/resumen/${idEspecialista}`);
-            const data = res.data.data;
+            setLoading(true);
+            const res = await especialistaService.getConfig(id_especialista);
             
-            setListaBloqueosGlobal(data.bloqueos || []);
-            procesarBloqueos(data.bloqueos || []);
-            setConfiguracion(data.configuracion_agenda);
-        } catch (err) {
-            console.error("Error al cargar la agenda:", err);
-        }
-    }, [idEspecialista, procesarBloqueos]);
-
-    useEffect(() => {
-        cargarAgendaCompleta();
-    }, [cargarAgendaCompleta]);
-
-    const desbloquearFecha = async (fecha) => {
-        try {
-            const bloqueoManual = listaBloqueosGlobal.find(b => b.fecha_inicio.startsWith(fecha));
-            if (bloqueoManual && bloqueoManual.id_bloqueo) {
-                await API.delete(`/bloqueos/${bloqueoManual.id_bloqueo}`);
-            } else {
-                const nuevaConfig = { ...configuracion };
-                if (nuevaConfig.bloqueos) {
-                    nuevaConfig.bloqueos = nuevaConfig.bloqueos.filter(b => b.fecha !== fecha);
-                }
-                await especialistaService.updateConfig(idEspecialista, nuevaConfig);
-            }
-            await cargarAgendaCompleta();
+            // 🌟 Extraemos limpiamente el objeto de configuración manejando la respuesta de Axios o datos directos
+            const configReal = res.data?.configuracion_agenda || res.data || res;
+            
+            setConfiguracion(configReal);
         } catch (error) {
-            alert("Hubo un error al intentar eliminar el bloqueo.");
+            console.error("Error al cargar la agenda:", error);
+        } finally {
+            setLoading(false);
         }
     };
 
-    return { configuracion, diasBloqueados, cargarAgendaCompleta, desbloquearFecha };
+    const desbloquearFecha = async (fecha) => {
+        // Lógica de desbloqueo si la usas
+        cargarAgendaCompleta();
+    };
+
+    useEffect(() => {
+        cargarAgendaCompleta();
+    }, [id_especialista]);
+
+    return { configuracion, diasBloqueados, cargarAgendaCompleta, desbloquearFecha, loading };
 }

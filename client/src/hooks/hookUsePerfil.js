@@ -12,9 +12,12 @@ export function hookUsePerfil(id_especialista) {
         const cargarConfig = async () => {
             try {
                 const res = await especialistaService.getConfig(id_especialista);
-                const dataBackend = res.data?.configuracion_agenda;
+                
+                // 🌟 Adaptamos para leer directamente de res.data (o de configuracion_agenda si viniera envuelto)
+                const dataBackend = res.data?.configuracion_agenda || res.data;
+                
                 const configDefault = { horarios: {}, bloqueos: [], duracion_turno: 60 };
-                setConfig(dataBackend || configDefault);
+                setConfig(dataBackend && Object.keys(dataBackend).length > 0 ? dataBackend : configDefault);
             } catch (error) {
                 console.error("Error al cargar configuración:", error);
                 setConfig({ horarios: {}, bloqueos: [], duracion_turno: 60 });

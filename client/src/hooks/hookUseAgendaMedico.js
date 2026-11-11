@@ -21,19 +21,23 @@ export function hookUseAgendaMedico(user, filtroFecha) {
                 especialistaService.getConfig(idParaConsultar)
             ]);
 
-            if (resTurnos.success) {
-                setConfig(resConfig?.data?.configuracion_agenda || null);
+            // 🌟 1. Asignamos la configuración de forma independiente y robusta
+            const dataConfig = resConfig?.data?.configuracion_agenda || resConfig?.data || null;
+            setConfig(dataConfig);
 
-                const turnosFiltrados = resTurnos.data.filter(turno => {
-                    if (!turno.fecha_hora) return false;
-                    return turno.fecha_hora.substring(0, 10) === filtroFecha;
-                });
-                setTurnos(turnosFiltrados);
-            } else {
-                setError('No se pudieron obtener los datos de la agenda.');
-            }
+            // 🌟 2. Procesamos los turnos de manera segura
+            const todosLosTurnos = resTurnos?.data || resTurnos || [];
+            const turnosArray = Array.isArray(todosLosTurnos) ? todosLosTurnos : (todosLosTurnos.turnos || []);
+
+            const turnosFiltrados = turnosArray.filter(turno => {
+                if (!turno.fecha_hora) return false;
+                return turno.fecha_hora.substring(0, 10) === filtroFecha;
+            });
+            
+            setTurnos(turnosFiltrados);
+
         } catch (err) {
-            console.error("Error al cargar datos:", err);
+            console.error("Error al cargar datos de la agenda:", err);
             setError('No se pudo cargar la agenda.');
         } finally {
             setLoading(false);
@@ -44,5 +48,5 @@ export function hookUseAgendaMedico(user, filtroFecha) {
         if (user) cargarDatosAgenda();
     }, [user, filtroFecha]);
 
-    return { turnos, config, loading, error };
+    return { turnos, config, loading, error, recargarAgenda: cargarDatosAgenda };
 }

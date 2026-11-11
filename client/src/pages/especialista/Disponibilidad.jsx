@@ -2,12 +2,6 @@
 // tambien se encarga de mostrar los días bloqueados en el calendario, y de cargar la configuración de horarios para cada día, que luego se pasa al selector para generar las horas dinámicamente
 // aca se crean los horarios base para cada día, en caso de que el backend no traiga la configuración, asi evitamos errores y mostramos algo por defecto
 
-
-//Sincronización Total: Disponibilidad ahora le pasa la configuración "limpia" a SelectorHorarios.
-//Visualización: El calendario volverá a pintarse correctamente porque ahora configuracion siempre tiene la estructura horarios.{dia}.
-//Funcionamiento del Selector: Al recibir la configuracion como prop, SelectorHorarios dejará de estar "ciego" y podrá generar los bloques de tiempo (ej. 30min o 60min) que el especialista configuró.
-
-
 import { useState } from 'react';
 import Calendar from 'react-calendar';
 import 'react-calendar/dist/Calendar.css';
@@ -44,14 +38,49 @@ export default function Disponibilidad() {
     const { user } = useAuth();
     const [fechaSeleccionada, setFechaSeleccionada] = useState(new Date());
     
-    // Usamos nuestro nuevo hook
+    // Usamos nuestro hook
     const { configuracion, diasBloqueados, cargarAgendaCompleta, desbloquearFecha } = hookUseDisponibilidad(user?.id_especialista);
 
     const tileClassName = ({ date, view }) => {
         if (view === 'month') {
-            const fechaStr = format(date, 'yyyy-MM-dd');
-            const cantidadBloqueos = diasBloqueados[fechaStr] || 0;
-            const esBloqueoConfig = configuracion?.bloqueos?.some(b => b.fecha === fechaStr);
+            // Fecha actual del calendario del mes en formato YYYY-MM-DD
+            const fechaCalendarioISO = format(date, 'yyyy-MM-dd');
+            // Y también en formato DD/MM/YYYY por si acaso
+            const fechaCalendarioDMY = format(date, 'dd/MM/yyyy');
+            
+            const cantidadBloqueos = diasBloqueados[fechaCalendarioISO] || 0;
+            
+            // 🌟 Verificación blindada contra cualquier formato de fecha guardada
+            const esBloqueoConfig = configuracion?.bloqueos?.some(b => {
+                if (!b.fecha) return false;
+                let fechaBloqueo = b.fecha.toString().trim();
+
+                // Si viene con hora (ISO), nos quedamos solo con la parte de la fecha
+                if (fechaBloqueo.includes('T')) {
+                    fechaBloqueo = fechaBloqueo.split('T')[0];
+                }
+
+                let fechaBloqueoISO = '';
+                let fechaBloqueoDMY = '';
+
+                // Si está en formato YYYY-MM-DD (ej: 2026-11-29)
+                if (fechaBloqueo.includes('-') && fechaBloqueo.split('-')[0].length === 4) {
+                    fechaBloqueoISO = fechaBloqueo;
+                    const partes = fechaBloqueo.split('-');
+                    fechaBloqueoDMY = `${partes[2]}/${partes[1]}/${partes[0]}`;
+                } 
+                // Si está en formato DD/MM/YYYY (ej: 29/11/2026)
+                else if (fechaBloqueo.includes('/')) {
+                    fechaBloqueoDMY = fechaBloqueo;
+                    const partes = fechaBloqueo.split('/');
+                    if (partes.length === 3) {
+                        fechaBloqueoISO = `${partes[2]}-${partes[1]}-${partes[0]}`;
+                    }
+                }
+
+                // Comparamos ambas posibilidades
+                return fechaBloqueoISO === fechaCalendarioISO || fechaBloqueoDMY === fechaCalendarioDMY;
+            });
 
             if (cantidadBloqueos >= 6 || esBloqueoConfig) return 'dia-bloqueado-rojo';
             if (cantidadBloqueos > 0) return 'dia-con-bloqueos-parciales';

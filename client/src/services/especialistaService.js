@@ -32,4 +32,17 @@ export const especialistaService = {
       throw error;
     }
   },
+
+
+
+  // 🌟 NUEVO: Obtener especialistas filtrados por el ID del servicio
+  getByServicio: async (id_servicio) => {
+    try {
+      const response = await api.get(`/especialistas/servicio/${id_servicio}`); // Asegúrate de que la ruta coincida con tu router de backend
+      return response.data.data;
+    } catch (error) {
+      console.error("Error al obtener especialistas por servicio:", error);
+      throw error;
+    }
+  },
 };
